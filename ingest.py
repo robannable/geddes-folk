@@ -9,6 +9,10 @@ corpus/studio/ or corpus/raw/, and writes:
 Run:
     python ingest.py
 
+Source files may be plain text (.txt, .md) or PDF (.pdf). PDF text is
+extracted with pypdf. A scanned PDF with no text layer yields nothing and
+says so — OCR it elsewhere first, since this does not bundle an OCR engine.
+
 The chunker has two modes selected by the manifest entry's `type`:
     "prose"      — paragraph chunks; long paragraphs split at sentence
                    boundaries to stay under the embed model's window.
@@ -38,6 +42,13 @@ INDEX = CORPUS / "index"
 MANIFEST = CORPUS / "manifest.json"
 
 EMBED_MODEL = "BAAI/bge-small-en-v1.5"
+
+# PDFs only. A scanned PDF with no text layer extracts to nothing or a
+# few stray characters, and would otherwise be indexed as a real but
+# useless source; any genuine page of prose clears this comfortably.
+# Text files are not held to it — a short studio note is a deliberate
+# short note, not a failed read.
+MIN_PDF_WORDS = 20
 
 # "CHAPTER IV", "CHAPTER 4.", "IV. THE VALLEY SECTION", "PART TWO"
 SECTION_HEADER = re.compile(
@@ -72,6 +83,39 @@ def source_path(filename: str) -> Path | None:
         if candidate.exists():
             return candidate
     return None
+
+
+def read_source(path: Path) -> str:
+    """Return a source file's text. Handles .pdf as well as .txt / .md.
+
+    A PDF's text layer is what is extracted — a scan with no text layer
+    returns almost nothing, which `build_chunks` reports rather than
+    passing on as an empty source. There is no OCR here on purpose:
+    Geddes-Ghost carried pytesseract and the system binary it needs, and
+    that is a heavy dependency for a case better handled by OCRing the
+    file once, outside this tool.
+    """
+    if path.suffix.lower() == ".pdf":
+        try:
+            from pypdf import PdfReader
+        except ImportError as exc:
+            raise RuntimeError(
+                f"{path.name} is a PDF but pypdf is not installed — "
+                f"`pip install -r requirements.txt`"
+            ) from exc
+        reader = PdfReader(str(path))
+        pages = []
+        for page in reader.pages:
+            try:
+                pages.append(page.extract_text() or "")
+            except Exception as exc:
+                print(f"    page skipped in {path.name}: {exc}", file=sys.stderr)
+        # Pages are separated by a blank line so the paragraph chunker
+        # does not run the last line of one page into the first of the
+        # next.
+        return "\n\n".join(pages)
+
+    return path.read_text(encoding="utf-8", errors="replace")
 
 
 def clean_ocr(text: str) -> str:
@@ -161,7 +205,22 @@ def build_chunks(manifest: list[dict]) -> list[dict]:
             print(f"  skip {src['id']}: {src['file']} not found "
                   f"(run fetch_corpus.py)", file=sys.stderr)
             continue
-        text = clean_ocr(path.read_text(encoding="utf-8"))
+
+        # One unreadable source should cost its own chunks, not the whole
+        # index. Before this, a PDF raised UnicodeDecodeError out of
+        # read_text and took the entire run down with it.
+        try:
+            text = clean_ocr(read_source(path))
+        except Exception as exc:
+            print(f"  skip {src['id']}: could not read {path.name} — {exc}",
+                  file=sys.stderr)
+            continue
+
+        if path.suffix.lower() == ".pdf" and len(text.split()) < MIN_PDF_WORDS:
+            print(f"  skip {src['id']}: {path.name} yielded only "
+                  f"{len(text.split())} words — a scan with no text layer? "
+                  f"OCR it before adding it", file=sys.stderr)
+            continue
 
         base = {
             "source_id": src["id"],

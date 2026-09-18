@@ -140,6 +140,19 @@ manifest and `corpus/studio/`; `fetch_corpus.py` and `ingest.py` build the
 rest. Do not commit fetched texts — they are hundreds of KB of djvu OCR
 each and they are reproducible from the manifest.
 
+`ingest.read_source()` handles `.txt`, `.md` and `.pdf`. PDFs go through
+pypdf, pages joined by a blank line. Before it existed a PDF in the corpus
+raised `UnicodeDecodeError` out of `read_text` and **aborted the whole
+ingest run**, losing every other source with it — `build_chunks` now
+isolates each source in its own try/except, which is the more important
+half of that fix.
+
+`MIN_PDF_WORDS` (20) catches a scanned PDF with no text layer: it extracts
+to nothing and would otherwise be indexed as a real but useless source.
+It applies to PDFs only — a short studio note is a deliberate short note.
+No OCR engine is bundled; Geddes-Ghost carried pytesseract and its system
+binary, which is a lot of weight for a job better done once, outside.
+
 `ingest.source_path()` resolves a manifest entry against `corpus/studio/`
 then `corpus/raw/`, studio first so a local edit beats a re-download.
 Studio is for material with no `download_url` — teaching notes, briefs,

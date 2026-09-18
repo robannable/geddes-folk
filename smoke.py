@@ -106,6 +106,64 @@ for _e in _manifest:
 print(f"  NOTE  {_pending} entr{'y' if _pending == 1 else 'ies'} still need a "
       f"download_url (see README, Adding the primary texts)")
 
+print("\n== source reading ==")
+import tempfile
+_tmp = Path(tempfile.mkdtemp())
+
+_txt = _tmp / "note.md"
+_txt.write_text("A short studio note.\n\nWith two paragraphs.", encoding="utf-8")
+check("reads text files", "studio note" in ingest.read_source(_txt), True)
+
+# A stray byte in djvu OCR should degrade, not abort the run.
+_odd = _tmp / "odd.txt"
+_odd.write_bytes("caf\xe9 and more text".encode("latin-1"))
+check("bad bytes in text degrade rather than raise",
+      "and more text" in ingest.read_source(_odd), True)
+
+try:
+    from pypdf import PdfWriter  # noqa: F401
+except ImportError:
+    print("  SKIP  pypdf not installed — PDF extraction untested here")
+else:
+    from pypdf import PdfWriter
+    # A valid PDF with no text layer: the scanned-document case.
+    _scan = _tmp / "scan.pdf"
+    _w = PdfWriter(); _w.add_blank_page(width=595, height=842)
+    with _scan.open("wb") as _f:
+        _w.write(_f)
+    check("a PDF with no text layer extracts nothing",
+          len(ingest.read_source(_scan).split()) < ingest.MIN_PDF_WORDS, True)
+
+    _broken = _tmp / "broken.pdf"
+    _broken.write_bytes(b"not a pdf at all")
+    try:
+        ingest.read_source(_broken)
+        check("a corrupt PDF raises", False, True)
+    except Exception:
+        check("a corrupt PDF raises rather than returning junk", True, True)
+
+print("\n== one bad source does not take down the run ==")
+# This is the regression that matters: before PDFs were handled, a single
+# .pdf in the corpus raised UnicodeDecodeError out of read_text and
+# aborted ingest entirely, so every other source was lost with it.
+_raw, _studio = ingest.RAW, ingest.STUDIO
+try:
+    ingest.RAW = ingest.STUDIO = _tmp
+    (_tmp / "fine.txt").write_text(
+        " ".join(["prose"] * 60) + "\n\n" + " ".join(["more"] * 60),
+        encoding="utf-8")
+    (_tmp / "bad.pdf").write_bytes(b"not a pdf at all")
+    _built = ingest.build_chunks([
+        {"id": "bad", "title": "Bad", "file": "bad.pdf", "type": "prose",
+         "voice": "both"},
+        {"id": "fine", "title": "Fine", "file": "fine.txt", "type": "prose",
+         "voice": "both"},
+    ])
+    check("the good source still indexed",
+          sorted({c["source_id"] for c in _built}), ["fine"])
+finally:
+    ingest.RAW, ingest.STUDIO = _raw, _studio
+
 print("\n== clean_ocr ==")
 check("rejoins hyphenated linebreak", "planning" in ingest.clean_ocr("plan-\nning"), True)
 check("collapses blank runs", ingest.clean_ocr("a\n\n\n\n\nb"), "a\n\nb")

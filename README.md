@@ -123,6 +123,21 @@ python ingest.py                       # rebuild the index
 Fetching needs outbound access to archive.org, gutenberg.org and Wikipedia, so
 run it on your own machine rather than from a web session.
 
+### File formats
+
+`.txt`, `.md` and **`.pdf`** — PDF text is extracted with pypdf, one blank
+line between pages so the chunker doesn't run pages together. Drop a PDF in
+`corpus/studio/` with a manifest entry naming it and it indexes like anything
+else.
+
+A **scanned** PDF has no text layer and yields nothing. Ingest names it and
+moves on rather than indexing an empty source; OCR it elsewhere first and add
+the result. There is no OCR engine bundled here on purpose — it is a heavy
+dependency for a job better done once, outside the tool.
+
+Ingest isolates each source, so a corrupt or unreadable file costs its own
+chunks and nothing else.
+
 ### Adding the primary texts
 
 Five entries are listed but have no `download_url` yet, because their

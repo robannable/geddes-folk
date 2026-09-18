@@ -1,0 +1,29 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# chainlit runtime
+.chainlit/
+.files/
+*.db
+*.sqlite
+*.sqlite3
+
+# corpus index (regenerate with `python ingest.py`)
+corpus/index/
+
+# conversation logs
+logs/
+
+# editors / OS
+.idea/
+.vscode/
+.DS_Store

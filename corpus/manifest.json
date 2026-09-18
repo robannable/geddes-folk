@@ -1,0 +1,130 @@
+[
+  {
+    "id": "cities_in_evolution",
+    "title": "Cities in Evolution",
+    "year": "1915",
+    "file": "cities_in_evolution.txt",
+    "type": "chaptered",
+    "voice": "both",
+    "weight_class": "general",
+    "source_url": "https://archive.org/search?query=cities+in+evolution+geddes",
+    "note": "UNVERIFIED: find the archive.org item and add its _djvu.txt as download_url. The central text — retrieval quality for planning questions depends on this one."
+  },
+  {
+    "id": "city_development",
+    "title": "City Development: A Study of Parks, Gardens, and Culture-Institutes (Dunfermline report)",
+    "year": "1904",
+    "file": "city_development.txt",
+    "type": "chaptered",
+    "voice": "both",
+    "weight_class": "general",
+    "source_url": "https://archive.org/search?query=city+development+geddes+dunfermline",
+    "note": "UNVERIFIED: add download_url once the archive.org identifier is confirmed."
+  },
+  {
+    "id": "evolution_of_sex",
+    "title": "The Evolution of Sex (with J. Arthur Thomson)",
+    "year": "1889",
+    "file": "evolution_of_sex.txt",
+    "type": "chaptered",
+    "voice": "both",
+    "weight_class": "general",
+    "source_url": "https://archive.org/search?query=evolution+of+sex+geddes+thomson",
+    "note": "UNVERIFIED. Primary source for the anabolic/katabolic theory and its use in arguments against women's suffrage and higher education — the Librarian's CONTEXT track needs this to cite rather than paraphrase."
+  },
+  {
+    "id": "evolution_1911",
+    "title": "Evolution (with J. Arthur Thomson)",
+    "year": "1911",
+    "file": "evolution_1911.txt",
+    "type": "chaptered",
+    "voice": "both",
+    "weight_class": "general",
+    "source_url": "https://archive.org/search?query=evolution+geddes+thomson+1911",
+    "note": "UNVERIFIED: Home University Library volume. Add download_url once confirmed."
+  },
+  {
+    "id": "indore_report",
+    "title": "Town Planning Towards City Development: A Report to the Durbar of Indore",
+    "year": "1918",
+    "file": "indore_report.txt",
+    "type": "chaptered",
+    "voice": "both",
+    "weight_class": "general",
+    "source_url": "https://archive.org/search?query=geddes+indore+town+planning",
+    "note": "UNVERIFIED. Written for a princely state under British paramountcy — primary material for the Librarian's CONTEXT track on the Indian reports. May be two volumes; check before adding download_url."
+  },
+
+  {
+    "id": "wiki_geddes",
+    "title": "Patrick Geddes (Wikipedia)",
+    "file": "wiki_geddes.txt",
+    "type": "prose",
+    "voice": "librarian",
+    "weight_class": "general",
+    "source_url": "https://en.wikipedia.org/wiki/Patrick_Geddes",
+    "wikipedia_title": "Patrick Geddes"
+  },
+  {
+    "id": "wiki_outlook_tower",
+    "title": "Outlook Tower (Wikipedia)",
+    "file": "wiki_outlook_tower.txt",
+    "type": "prose",
+    "voice": "librarian",
+    "weight_class": "general",
+    "source_url": "https://en.wikipedia.org/wiki/Outlook_Tower",
+    "wikipedia_title": "Outlook Tower"
+  },
+  {
+    "id": "wiki_thomson",
+    "title": "J. Arthur Thomson (Wikipedia)",
+    "file": "wiki_thomson.txt",
+    "type": "prose",
+    "voice": "librarian",
+    "weight_class": "general",
+    "source_url": "https://en.wikipedia.org/wiki/J._Arthur_Thomson",
+    "wikipedia_title": "J. Arthur Thomson"
+  },
+  {
+    "id": "wiki_town_planning",
+    "title": "Urban planning (Wikipedia)",
+    "file": "wiki_town_planning.txt",
+    "type": "prose",
+    "voice": "librarian",
+    "weight_class": "general",
+    "source_url": "https://en.wikipedia.org/wiki/Urban_planning",
+    "wikipedia_title": "Urban planning"
+  },
+  {
+    "id": "wiki_white_city",
+    "title": "White City, Tel Aviv (Wikipedia)",
+    "file": "wiki_white_city.txt",
+    "type": "prose",
+    "voice": "librarian",
+    "weight_class": "general",
+    "source_url": "https://en.wikipedia.org/wiki/White_City_(Tel_Aviv)",
+    "wikipedia_title": "White City (Tel Aviv)",
+    "note": "Covers the 1925 Geddes plan. Verify the article actually discusses it; if thin, find a better secondary source for the Librarian's CONTEXT track."
+  },
+
+  {
+    "id": "site_analysis_topics",
+    "title": "Site Analysis Topics — Folk, Work, Place",
+    "file": "site_analysis_topics.md",
+    "type": "prose",
+    "voice": "both",
+    "weight_class": "project",
+    "source_url": "",
+    "note": "Teaching material carried over from Geddes-Ghost/documents/."
+  },
+  {
+    "id": "ethnographic_observation",
+    "title": "Ethnographic Observation",
+    "file": "ethnographic_observation.md",
+    "type": "prose",
+    "voice": "both",
+    "weight_class": "project",
+    "source_url": "",
+    "note": "Teaching material carried over from Geddes-Ghost/documents/."
+  }
+]

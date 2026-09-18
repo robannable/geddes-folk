@@ -22,9 +22,13 @@ venv/
 #   raw/     fetched from the manifest by fetch_corpus.py
 #   studio/  your own material, placed by hand
 #   index/   built from both by ingest.py
-corpus/raw/
+# `dir/*` not `dir/`: git cannot re-include a file whose parent
+# directory is excluded, so `corpus/raw/` + `!corpus/raw/.gitkeep`
+# silently drops the .gitkeep and the folder vanishes from a clone.
+corpus/raw/*
 !corpus/raw/.gitkeep
-corpus/studio/
+corpus/studio/*
+!corpus/studio/.gitkeep
 corpus/index/
 
 # conversation logs

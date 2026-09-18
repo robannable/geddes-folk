@@ -55,19 +55,36 @@ if not exist ".env" (
     )
 )
 
-REM --- 4. corpus index (optional) ------------------------------------------
+REM --- 4. corpus ------------------------------------------------------------
+REM Fetch before ingest.  A fresh clone carries only the two teaching
+REM documents; everything else has to be downloaded first, and ingesting
+REM without fetching silently builds an index of almost nothing.
 if not exist "corpus\index\vectors.faiss" (
     echo.
     echo No corpus index found at corpus\index\vectors.faiss.
     echo Without it, both voices speak from their prompts alone.
-    set /p BUILD="Build the index now from corpus\raw? [y/N]: "
+    echo.
+    set /p BUILD="Download the corpus and build the index now? [y/N]: "
     if /i "!BUILD!"=="y" (
+        echo.
+        echo Downloading sources listed in corpus\manifest.json ...
+        REM Non-zero exit means some entries failed; the rest still
+        REM downloaded, so carry on to ingest what did arrive.
+        "%PY%" fetch_corpus.py
+        if errorlevel 1 echo Some sources could not be fetched ^(see above^).
+
+        echo.
         "%PY%" ingest.py
         if errorlevel 1 (
             echo.
-            echo Ingest failed.  You can re-run later with:  .venv\Scripts\python.exe ingest.py
+            echo Ingest failed.  Re-run later with:  .venv\Scripts\python.exe ingest.py
             pause
         )
+
+        echo.
+        echo Note: manifest entries marked UNVERIFIED have no download_url
+        echo and were skipped.  Geddes's own books are among them - see the
+        echo Corpus section of README.md.
     )
 )
 

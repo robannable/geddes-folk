@@ -37,7 +37,12 @@ track separately — which is the cost of running two trigger sets instead of on
 
 Double-click `run.bat`. First run creates `.venv`, installs dependencies
 (~1 GB, includes torch), copies `.env.example` → `.env` for your
-`ANTHROPIC_API_KEY`, and offers to build the corpus index.
+`ANTHROPIC_API_KEY`, then offers to **download the corpus and build the
+index** before launching.
+
+Afterwards, `fetch.bat` downloads new manifest entries and `ingest.bat`
+rebuilds the index — the pair you'll want each time you add a
+`download_url` to the manifest.
 
 ### Mac / Linux
 
@@ -69,8 +74,8 @@ owns it), `project` (1.3×), `history` (1.2×), `general` (1.0×). The weights a
 multipliers on the FAISS similarity, applied before the top-k cut, so they can
 actually reorder results.
 
-Fetch runs on your own machine — web sessions block archive.org, gutenberg.org
-and en.wikipedia.org:
+`run.bat` / `run.sh` do the first fetch and ingest for you. Afterwards, or on
+a machine where you're driving it by hand:
 
 ```bash
 python fetch_corpus.py                        # everything missing
@@ -78,14 +83,37 @@ python fetch_corpus.py wiki_geddes            # selected ids
 python ingest.py                              # rebuild the index
 ```
 
+On Windows: `fetch.bat` and `ingest.bat` wrap those two against the venv.
+
+Note that fetching has to happen on a machine with outbound access — Claude
+Code on the web sessions block archive.org, gutenberg.org and en.wikipedia.org,
+which is why the corpus isn't already in the repo.
+
 **Most book entries carry a `note` saying `UNVERIFIED` and have no
 `download_url`.** The archive.org identifiers were not confirmed — click
 through each `source_url`, find the item, and add its `_djvu.txt` link. The
 fetcher skips entries without a fetch field rather than guessing.
 
+### What a fresh install actually indexes
+
+Only 7 of the 12 manifest entries, and the split is lopsided:
+
+| Voice | Sources | What |
+|---|---:|---|
+| Geddes | 2 | the two teaching documents (974 words) — **none of his own writing** |
+| Librarian | 7 | those two, plus five Wikipedia articles |
+
+The five books are all `UNVERIFIED` and don't index. So out of the box Geddes
+is reconstructed almost entirely from what the model already knows about him,
+with nothing retrieved to hold him to, and the Librarian's CHECK track can
+catch a wrong date but cannot confirm a quotation or a page.
+
 This matters more than it looks: Geddes-Ghost ran on three documents, and a
 fact-checking Librarian with nothing to check against answers "I cannot confirm
-that" to everything. Corpus work gates the Librarian being useful at all.
+that" to everything. Corpus work gates the Librarian being useful at all, and
+*Cities in Evolution* is the one to find first — the valley section,
+conservative surgery and the diagnostic survey all live there, and that is most
+of what students will ask about.
 
 ## Observation surfaces
 

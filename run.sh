@@ -53,18 +53,34 @@ if [ ! -f ".env" ]; then
     fi
 fi
 
-# --- 4. corpus index (optional) -------------------------------------------
+# --- 4. corpus -------------------------------------------------------------
+# Fetch before ingest.  A fresh clone carries only the two teaching
+# documents; everything else has to be downloaded first, and ingesting
+# without fetching silently builds an index of almost nothing.
 if [ ! -f "corpus/index/vectors.faiss" ]; then
     echo
     echo "No corpus index found at corpus/index/vectors.faiss."
     echo "Without it, both voices speak from their prompts alone."
-    read -r -p "Build the index now from corpus/raw? [y/N]: " BUILD
+    echo
+    read -r -p "Download the corpus and build the index now? [y/N]: " BUILD
     case "$BUILD" in
         [Yy]*)
+            echo
+            echo "Downloading sources listed in corpus/manifest.json ..."
+            # Non-zero exit means some entries failed; the rest still
+            # downloaded, so carry on to ingest what did arrive.
+            "$PY" fetch_corpus.py || echo "Some sources could not be fetched (see above)."
+
+            echo
             if ! "$PY" ingest.py; then
                 echo
-                echo "Ingest failed.  You can re-run later with:  .venv/bin/python ingest.py"
+                echo "Ingest failed.  Re-run later with:  .venv/bin/python ingest.py"
             fi
+
+            echo
+            echo "Note: manifest entries marked UNVERIFIED have no download_url"
+            echo "and were skipped.  Geddes's own books are among them - see the"
+            echo "Corpus section of README.md."
             ;;
     esac
 fi

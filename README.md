@@ -138,16 +138,25 @@ died in sharp-folk — so add a row before repointing `VOICE_MODEL`.
 
 ## Dashboard
 
+Served by the running app at **`/dashboard`** — same host and port as the
+chat, no second process and no extra dependency. Chainlit runs on FastAPI
+and `dashboard.mount()` registers the route on that same server. It reads
+`logs/*.jsonl` per request, so reloading always shows the current state,
+and the day-range control at the top right filters it
+(`/dashboard?days=14`). A link appears in a folded step at the start of
+each chat.
+
+For a copy to keep or send on:
+
 ```bash
 python dashboard.py              # all logs  -> logs/dashboard.html
 python dashboard.py --days 14    # last fortnight
 python dashboard.py --out /tmp/report.html
 ```
 
-One self-contained HTML file: inline SVG charts, no server, no external
-requests, no dependencies beyond the standard library. It opens from disk,
-off a file share, on a phone or from the VPS. On Windows, `dashboard.bat`
-renders and opens it.
+`dashboard.bat` does the same on Windows and opens the result. Charts are
+inline SVG generated in Python rather than drawn by a charting library, so
+the page renders identically served, saved or emailed.
 
 Panels: overview, **retrieval health** (what share of turns actually reached
 Geddes with a passage — the check the predecessor failed silently), Librarian
@@ -175,8 +184,15 @@ python smoke.py
 
 Runs without faiss or torch installed. Covers chunking, OCR cleanup, student
 name matching, retrieval weighting, cost estimation, mode detection, effort
-resolution, transcript rendering and dashboard analysis. Not a substitute for
-`python ingest.py` and a real conversation.
+resolution, transcript rendering and dashboard analysis.
+
+Run it inside `.venv`, where Chainlit is installed, and it also exercises the
+`/dashboard` route against a real Chainlit server — including that the route
+is matched ahead of Chainlit's catch-all, which is the failure that makes
+`/dashboard` silently return the chat page with a 200. Outside `.venv` that
+block skips with a note.
+
+Not a substitute for `python ingest.py` and a real conversation.
 
 ## Where this is up to
 
@@ -191,9 +207,9 @@ retrieval.py       load index, voice + student filtering, weighted re-rank
 session_log.py     per-turn JSONL + cost estimation
 transcript.py      JSONL → Markdown
 fetch_corpus.py    manifest → corpus/raw/
-dashboard.py       logs/*.jsonl → one self-contained HTML report
+dashboard.py       log analysis; served at /dashboard, or exported
 prompts/           Geddes persona, Librarian voice
-smoke.py           80 assertions, no faiss/torch needed
+smoke.py           97 assertions (80 without chainlit installed)
 ```
 
 Not built:

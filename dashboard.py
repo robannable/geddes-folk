@@ -1,20 +1,27 @@
-"""Render logs/*.jsonl as a self-contained HTML report.
+"""The conversation dashboard: analysis of logs/*.jsonl, and its views.
+
+Served live by the running app at /dashboard, on the same host and port
+as the chat — Chainlit runs on FastAPI and `mount()` registers the route
+on that same server, so there is no second process, no second port and
+no extra dependency. Reading it always reflects the logs as they stand.
+
+Also usable from the command line, for an export to send on or keep:
 
     python dashboard.py                  # all logs -> logs/dashboard.html
     python dashboard.py --days 14        # last 14 days only
     python dashboard.py --out report.html
 
-No dependencies beyond the standard library, and no server: the output is
-one HTML file with inline SVG charts and no external requests, so it opens
-from disk, over a file share, on a phone, or from the VPS.
+Charts are inline SVG generated here rather than drawn by a charting
+library, so the page has no external requests and renders the same served,
+saved or emailed.
 
-Geddes-Ghost's `admin_dashboard.py` was a 1,200-line Streamlit app whose
-`ResponseEvaluator` the chat app then imported back out of it. This reads
-the JSONL and writes a file; nothing imports it and it imports nothing
-from the app.
+`app.py` imports this; this imports nothing from `app.py`. Geddes-Ghost's
+`admin_dashboard.py` held `ResponseEvaluator`, which `geddesghost.py` then
+imported back out of it — a knot that made neither module movable. The
+dependency here runs one way.
 
-Its temperature analysis has no successor here — temperature is rejected
-by current models, so there is no continuous dial to plot response length
+Its temperature analysis has no successor — temperature is rejected by
+current models, so there is no continuous dial to plot response length
 against. The cognitive-mode panel is the nearest honest equivalent.
 """
 
@@ -629,11 +636,19 @@ body{margin:0;background:var(--surface-0);color:var(--text-primary);
 font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,
 "Helvetica Neue",Arial,sans-serif;padding:0 16px 64px}
 .wrap{max-width:860px;margin:0 auto}
-header{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
 padding:32px 0 8px}
+header h1,header .sub{align-self:baseline}
 h1{font-size:1.5rem;margin:0;font-weight:650;letter-spacing:-.01em}
 .sub{color:var(--text-secondary);font-size:.9rem}
-button{margin-left:auto;background:var(--surface-1);color:var(--text-primary);
+.ranges{display:flex;gap:2px;background:var(--surface-1);
+border:1px solid var(--axis);border-radius:8px;padding:2px;margin-left:auto}
+.rng{color:var(--text-secondary);text-decoration:none;font-size:.82rem;
+padding:4px 10px;border-radius:6px}
+.rng:hover{color:var(--text-primary)}
+.rng.on{background:color-mix(in srgb,var(--axis) 45%,transparent);
+color:var(--text-primary);font-weight:550}
+button{background:var(--surface-1);color:var(--text-primary);
 border:1px solid var(--axis);border-radius:8px;padding:6px 12px;
 font:inherit;font-size:.85rem;cursor:pointer}
 section{background:var(--surface-1);border:1px solid var(--axis);
@@ -712,7 +727,47 @@ document.documentElement.setAttribute('data-theme',cur==='dark'?'light':'dark')}
 """
 
 
-def render(a: dict, generated: str, scope: str) -> str:
+def _range_controls(days: int | None) -> str:
+    """Day-range filter, in one row above the charts. Plain links — the
+    report is regenerated server-side, so there is no client state to
+    keep in step with what the charts show."""
+    opts = [(None, "All"), (30, "30 days"), (14, "14 days"), (7, "7 days")]
+    links = "".join(
+        f'<a class="rng{" on" if d == days else ""}" '
+        f'href="/dashboard{f"?days={d}" if d else ""}">{esc(label)}</a>'
+        for d, label in opts
+    )
+    return f'<nav class="ranges">{links}</nav>'
+
+
+def _footer(live: bool) -> str:
+    if live:
+        return ('Read live from logs/*.jsonl, which remains the source of '
+                'truth.<br>Reload for the current state; '
+                '<code>python dashboard.py</code> exports a copy.')
+    return ('Read from logs/*.jsonl, which remains the source of truth.<br>'
+            'Served live by the running app at <code>/dashboard</code>.')
+
+
+def report(days: int | None = None, live: bool = False) -> str:
+    """Build the whole report as HTML. The one entry point for both views.
+
+    `live` marks the page as served by the running app rather than
+    exported, which changes the footer and shows the range controls.
+    """
+    turns = load(days)
+    scope = f"last {days} days" if days else "all logs"
+    return render(
+        analyse(turns),
+        datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        scope,
+        live=live,
+        days=days,
+    )
+
+
+def render(a: dict, generated: str, scope: str, live: bool = False,
+           days: int | None = None) -> str:
     return f"""<!DOCTYPE html>
 <html lang="en-GB">
 <head>
@@ -725,18 +780,57 @@ def render(a: dict, generated: str, scope: str) -> str:
 <div class="wrap">
 <header>
   <h1>geddes-folk</h1>
-  <span class="sub">{esc(scope)} · generated {esc(generated)}</span>
+  <span class="sub">{esc(scope)} · {esc(generated)}</span>
+  {_range_controls(days) if live else ""}
   <button id="theme" type="button">Light / dark</button>
 </header>
 {build_panels(a)}
-<footer>Read from logs/*.jsonl, which remains the source of truth.<br>
-Regenerate with <code>python dashboard.py</code>.</footer>
+<footer>{_footer(live)}</footer>
 </div>
 <div id="tip"></div>
 <script>{JS}</script>
 </body>
 </html>
 """
+
+
+def mount() -> bool:
+    """Register GET /dashboard on Chainlit's FastAPI server.
+
+    Called from app.py at import. Returns True if the route was added.
+
+    Wrapped because it reaches into Chainlit's internals: if a Chainlit
+    upgrade moves `chainlit.server.app`, the dashboard should go missing
+    with a message on stdout, not stop the chat app from starting. The
+    CLI export keeps working either way.
+    """
+    try:
+        from chainlit.server import app as server
+        from fastapi.responses import HTMLResponse
+    except Exception as exc:  # pragma: no cover - depends on chainlit build
+        print(f"[dashboard] not mounted ({exc}); "
+              f"`python dashboard.py` still works")
+        return False
+
+    @server.get("/dashboard", response_class=HTMLResponse)
+    async def _dashboard(days: int | None = None):  # noqa: D401
+        # Log volume is small (one JSON line per turn) and this is read by
+        # one tutor, so re-reading per request is cheaper than any cache
+        # that could go stale against a conversation happening right now.
+        return HTMLResponse(report(days=days, live=True))
+
+    # Chainlit's own router ends in a catch-all that serves the chat SPA
+    # for any unmatched path, and it is registered before this one.
+    # Starlette matches in list order, so a route merely appended here
+    # never runs — /dashboard would quietly return the chat page with a
+    # 200, which is exactly what it did before this line existed. Move it
+    # in front of everything so it is matched first.
+    try:
+        server.routes.insert(0, server.routes.pop())
+    except IndexError:  # pragma: no cover - cannot happen with a route added
+        return False
+
+    return True
 
 
 def main() -> int:
@@ -754,13 +848,7 @@ def main() -> int:
 
     out = Path(args.out) if args.out else LOGS / "dashboard.html"
     out.parent.mkdir(parents=True, exist_ok=True)
-    scope = f"last {args.days} days" if args.days else "all logs"
-    out.write_text(
-        render(analyse(turns),
-               datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-               scope),
-        encoding="utf-8",
-    )
+    out.write_text(report(days=args.days), encoding="utf-8")
     print(f"wrote {out}  ({len(turns)} turns)")
     return 0
 

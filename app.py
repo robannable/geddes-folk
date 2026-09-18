@@ -25,6 +25,7 @@ from anthropic import AsyncAnthropic
 from chainlit.input_widget import Select, TextInput
 from dotenv import load_dotenv
 
+import dashboard
 import modes
 from config import (
     CLASSIFIER_MODEL,
@@ -47,6 +48,11 @@ LIBRARIAN_VOICE = (PROMPTS / "librarian_voice.txt").read_text(encoding="utf-8")
 
 client = AsyncAnthropic()
 retriever = Retriever()
+
+# Serve the conversation dashboard at /dashboard on this same server.
+# Returns False and prints if Chainlit's internals have moved; the chat
+# app starts either way.
+DASHBOARD_MOUNTED = dashboard.mount()
 
 # Verdicts the classifier may return. SKIP means the Librarian stays out.
 CHECK = "CHECK"
@@ -373,6 +379,17 @@ async def on_chat_start():
         ),
         author=GEDDES,
     ).send()
+
+    if DASHBOARD_MOUNTED:
+        # Tutor-facing, so it sits in a folded step rather than in
+        # Geddes's voice.
+        async with cl.Step(name="Conversation dashboard", type="tool") as step:
+            step.output = (
+                "Retrieval health, Librarian trigger rates, cost and corpus "
+                "usage across every logged turn: "
+                "[/dashboard](/dashboard)\n\n"
+                "Reads `logs/*.jsonl` live — reload it for the current state."
+            )
 
 
 @cl.on_settings_update

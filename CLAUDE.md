@@ -84,18 +84,30 @@ classifier on `claude-haiku-4-5`.
   its own config. Verify with `usage.cache_read_input_tokens > 0` rather than
   reasoning about it.
 
-### Dashboard: a file, not a server
+### Dashboard: part of the app, at /dashboard
 
-`dashboard.py` reads `logs/*.jsonl` and writes one self-contained HTML
-file — inline SVG, no server, no external requests, standard library only.
-The plan said Streamlit, following Geddes-Ghost; Rob's standing preference
-is single-file HTML, vanilla JS, no frameworks, running offline and on a
-phone, so it was built that way instead and he was told. Reverting to
-Streamlit is a contained rewrite of one file if he ever wants it.
+`dashboard.mount()` registers a route on Chainlit's own FastAPI server, so
+the report is served by the running app on the same host and port as the
+chat. No second process, no second port, no extra dependency, and it reads
+the JSONL per request so it is never stale. `python dashboard.py` still
+exports a copy to a file.
 
-Nothing imports it and it imports nothing from the app. Geddes-Ghost's
+**The route must be inserted ahead of Chainlit's routes, not appended.**
+Chainlit's router ends in a catch-all serving the chat SPA for any
+unmatched path, registered before anything added later; Starlette matches
+in list order, so an appended `/dashboard` returns the chat page with a
+200 and no error anywhere. `mount()` moves it to the front and `smoke.py`
+asserts `server.routes[0].path == "/dashboard"`.
+
+A first pass built this as a standalone HTML generator, reasoning from
+Rob's general preference for single-file HTML with no frameworks. He
+corrected that: this repo is an integrated Python app and the preference
+was never meant to fragment it. Build features into the tool.
+
+`app.py` imports this; this imports nothing from `app.py`. Geddes-Ghost's
 1,200-line `admin_dashboard.py` held `ResponseEvaluator`, which
-`geddesghost.py` then imported back out of it; that knot is not recreated.
+`geddesghost.py` then imported back out of it — a knot that made neither
+module movable. The dependency here runs one way.
 
 Two deliberate absences:
 
@@ -230,14 +242,16 @@ both prompts and `dashboard.py` all exist and `smoke.py` covers them.
 ## Unverified — check before trusting
 
 Written down because this project's whole point is not passing off
-plausible things as checked:
+plausible things as checked.
+
+Now verified against Chainlit 2.12.0, so no longer on this list: the
+settings-panel widgets and their fields, `cl.ChatSettings`,
+`on_settings_update`, `cl.Action`/`Step`/`Message`, `chainlit.server.app`,
+the `/dashboard` route, and that `app.py` imports cleanly. `smoke.py`
+covers all of it when run inside `.venv`. Still unverified:
 
 - **The contested-material list** in the persona, the classifier prompt and
   above. Recalled, not checked against sources.
-- **The Chainlit settings API** — `from chainlit.input_widget import Select,
-  TextInput` and `cl.ChatSettings([...]).send()`. Written from
-  documentation knowledge; Chainlit was not installed in the session that
-  wrote it, and sharp-folk has no settings panel to copy.
 - **The `.bat` files.** `run.sh` was syntax-checked; the batch files were
   not executed. The delayed-expansion block in `run.bat` and its escaped
   parens are the fussy parts.

@@ -224,5 +224,52 @@ check("states the retrieval-health percentage", "%" in html_out, True)
 empty = dashboard.analyse([])
 check("empty logs do not crash", dashboard.render(empty, "x", "y").count("<section>") > 0, True)
 
+print("\n== chainlit integration ==")
+# Needs chainlit installed. Skipped in the bare environment; run inside
+# .venv (where the app runs) to actually exercise it.
+try:
+    import chainlit as cl
+    from chainlit.input_widget import Select, TextInput
+    from chainlit.server import app as server
+    from fastapi.testclient import TestClient
+except Exception as exc:
+    print(f"  SKIP  chainlit not importable here ({type(exc).__name__}) — "
+          f"run smoke.py inside .venv to cover the /dashboard route")
+else:
+    check("mount() registers the route", dashboard.mount(), True)
+    # Chainlit's router ends in a catch-all that serves the chat SPA, and
+    # it is registered first. A merely-appended route never runs: the
+    # request 200s with the chat page instead. mount() moves it to the
+    # front, and this is the assertion that catches a regression.
+    check("/dashboard is matched before the SPA catch-all",
+          getattr(server.routes[0], "path", None), "/dashboard")
+
+    client = TestClient(server)
+    r = client.get("/dashboard")
+    check("GET /dashboard -> 200", r.status_code, 200)
+    check("serves HTML", r.headers["content-type"].startswith("text/html"), True)
+    body = r.text
+    check("serves the report, not the chat SPA",
+          "Retrieval health" in body and "<title>Assistant</title>" not in body, True)
+    check("served page makes no external requests",
+          "http://" not in body and "https://" not in body, True)
+    check("served page is marked live", "Read live from logs" in body, True)
+    check("served page offers the range controls",
+          'href="/dashboard?days=14"' in body, True)
+
+    r14 = client.get("/dashboard?days=14")
+    check("?days scopes the report", "last 14 days" in r14.text, True)
+    check("non-numeric ?days is rejected",
+          client.get("/dashboard?days=nope").status_code, 422)
+
+    # The widget classes app.py builds the settings panel from. They are
+    # pydantic dataclasses, so the declared fields are what must match.
+    check("TextInput has the fields app.py passes",
+          {"id", "label", "initial", "description"} <= set(TextInput.__dataclass_fields__), True)
+    check("Select has the fields app.py passes",
+          {"id", "label", "values", "initial_index", "description"} <= set(Select.__dataclass_fields__), True)
+    for attr in ("ChatSettings", "Action", "Step", "Message", "on_settings_update"):
+        check(f"chainlit exposes cl.{attr}", hasattr(cl, attr), True)
+
 print(f"\n{ok} passed, {fail} failed")
 sys.exit(1 if fail else 0)

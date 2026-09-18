@@ -5,6 +5,8 @@ Two fetch modes per entry:
   - `wikipedia_title`  : Wikipedia REST API, plain-text extract saved.
 
 Entries already present locally are skipped, so this is safe to re-run.
+corpus/raw/ is gitignored and rebuilt per install; entries that ship with
+the repo live in corpus/studio/ and are skipped here.
 
 Usage:
     python fetch_corpus.py                                        # everything missing
@@ -29,6 +31,7 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).parent
 RAW = ROOT / "corpus" / "raw"
+STUDIO = ROOT / "corpus" / "studio"
 MANIFEST = ROOT / "corpus" / "manifest.json"
 
 USER_AGENT = "geddes-folk corpus fetcher (https://github.com/robannable/geddes-folk)"
@@ -66,6 +69,11 @@ def fetch_wikipedia(title: str) -> str:
 
 
 def fetch_one(entry: dict) -> str:
+    # Studio material ships with the repo and has no download_url; never
+    # report it as a failure or try to overwrite it.
+    if (STUDIO / entry["file"]).exists():
+        return f"skip {entry['id']}: ships with the repo (corpus/studio/)"
+
     file_path = RAW / entry["file"]
     if file_path.exists():
         return f"skip {entry['id']}: {entry['file']} already present"

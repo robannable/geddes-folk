@@ -84,6 +84,13 @@ showing what was retrieved and what the turn cost.
 
 ## The corpus
 
+Corpus texts are **built per install, not shipped**. `corpus/raw/` and
+`corpus/index/` are gitignored, so a clone stays small and nobody commits a
+500 KB djvu dump; `fetch_corpus.py` downloads the texts and `ingest.py` builds
+the index. Material that belongs to the repo and has no `download_url` —
+teaching notes, studio briefs — lives in `corpus/studio/` and is tracked.
+A manifest entry resolves against either directory, studio first.
+
 `corpus/manifest.json` lists every source. Each entry is split by **voice**:
 
 - `"both"` — Geddes's own writings and the studio's teaching material. Both
@@ -104,7 +111,8 @@ the top-k cut, so it can genuinely reorder results:
 
 Add an entry with `id`, `title`, `file`, `type` (`prose` or `chaptered`),
 `voice`, `weight_class`, a `source_url` for citation, and one of
-`download_url` (direct plain-text fetch) or `wikipedia_title`. Then:
+`download_url` (direct plain-text fetch) or `wikipedia_title`. For your own
+material, drop the file in `corpus/studio/` instead and omit both. Then:
 
 ```bash
 python fetch_corpus.py                 # everything missing
@@ -220,7 +228,10 @@ transcript.py      JSONL → Markdown
 dashboard.py       log analysis, served at /dashboard or exported
 smoke.py           tests
 prompts/           Geddes persona, Librarian voice
-corpus/            manifest.json, raw/ texts, index/ (generated)
+corpus/            manifest.json
+  studio/            repo-owned text — tracked
+  raw/               fetched text — gitignored
+  index/             FAISS index — gitignored
 public/            portrait served at /public/
 chainlit.md        welcome screen
 ```

@@ -1,7 +1,7 @@
 """Build the corpus index.
 
 Reads corpus/manifest.json, processes each source whose `file` is present in
-corpus/raw/, and writes:
+corpus/studio/ or corpus/raw/, and writes:
 
     corpus/index/chunks.jsonl   — one JSON object per chunk
     corpus/index/vectors.faiss  — FAISS index, parallel order to chunks.jsonl
@@ -18,7 +18,7 @@ The chunker has two modes selected by the manifest entry's `type`:
                    together gives retrieval a coherent unit.
 
 OCR cleanup is intentionally light — per-source tuning is expected. Re-run
-this script after any change to the manifest or to corpus/raw/.
+this script after any change to the manifest or to either corpus directory.
 """
 
 import json
@@ -31,9 +31,11 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 
 ROOT = Path(__file__).parent
-RAW = ROOT / "corpus" / "raw"
-INDEX = ROOT / "corpus" / "index"
-MANIFEST = ROOT / "corpus" / "manifest.json"
+CORPUS = ROOT / "corpus"
+RAW = CORPUS / "raw"
+STUDIO = CORPUS / "studio"
+INDEX = CORPUS / "index"
+MANIFEST = CORPUS / "manifest.json"
 
 EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 
@@ -50,6 +52,26 @@ GUTENBERG_START = re.compile(
 GUTENBERG_END = re.compile(
     r"\*\*\*\s*END OF (?:THE |THIS )?PROJECT GUTENBERG.*?\*\*\*", re.IGNORECASE
 )
+
+
+def source_path(filename: str) -> Path | None:
+    """Locate a manifest entry's text, or None if it isn't here yet.
+
+    Two directories, because the texts have two provenances:
+
+      corpus/studio/  material that belongs to the repo — teaching notes,
+                      briefs, anything with no download_url. Tracked in git.
+      corpus/raw/     everything fetched from the manifest. Gitignored and
+                      rebuilt per install, so a clone stays small.
+
+    studio wins on a name clash, since a local edit should beat a
+    re-download.
+    """
+    for directory in (STUDIO, RAW):
+        candidate = directory / filename
+        if candidate.exists():
+            return candidate
+    return None
 
 
 def clean_ocr(text: str) -> str:
@@ -134,9 +156,10 @@ def chunk_sections(text: str, max_words: int = 350) -> list[dict]:
 def build_chunks(manifest: list[dict]) -> list[dict]:
     all_chunks: list[dict] = []
     for src in manifest:
-        path = RAW / src["file"]
-        if not path.exists():
-            print(f"  skip {src['id']}: {path.name} not found", file=sys.stderr)
+        path = source_path(src["file"])
+        if path is None:
+            print(f"  skip {src['id']}: {src['file']} not found "
+                  f"(run fetch_corpus.py)", file=sys.stderr)
             continue
         text = clean_ocr(path.read_text(encoding="utf-8"))
 

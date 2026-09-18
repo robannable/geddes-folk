@@ -133,6 +133,24 @@ aqua sits below 3:1 contrast, which is why every chart carries a legend,
 direct value labels and the table view — remove one and the relief rule
 breaks.
 
+### Corpus is built per install, not shipped
+
+`corpus/raw/` and `corpus/index/` are gitignored. A clone carries the
+manifest and `corpus/studio/`; `fetch_corpus.py` and `ingest.py` build the
+rest. Do not commit fetched texts — they are hundreds of KB of djvu OCR
+each and they are reproducible from the manifest.
+
+`ingest.source_path()` resolves a manifest entry against `corpus/studio/`
+then `corpus/raw/`, studio first so a local edit beats a re-download.
+Studio is for material with no `download_url` — teaching notes, briefs,
+anything written for the studio rather than fetched. `fetch_corpus.py`
+skips those rather than reporting them as failures.
+
+`smoke.py` asserts the manifest is internally consistent: every entry is
+fetchable, shipped, or carries a `note` explaining why not. It does *not*
+assert every source is present — the primary texts still need their
+archive.org identifiers, and that is outstanding work, not a test failure.
+
 ### Retrieval weighting
 
 `weight_class` on each manifest entry becomes a multiplier on the FAISS
@@ -192,7 +210,8 @@ geddes-folk/
 ├── dashboard.py        logs/*.jsonl -> one self-contained HTML report
 ├── smoke.py            engine tests; runs without faiss/torch
 ├── corpus/manifest.json
-├── corpus/raw/         two teaching docs present; books not fetched
+├── corpus/studio/      repo-owned text (no download_url); TRACKED
+├── corpus/raw/         fetched text; gitignored, rebuilt per install
 ├── public/patrick_geddes.jpg
 ├── run.sh / run.bat / fetch.bat / ingest.bat / dashboard.bat
 │                       + geddes-folk.service

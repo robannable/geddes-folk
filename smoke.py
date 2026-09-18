@@ -69,6 +69,43 @@ plain = "One paragraph of at least fifteen words so that it clears the minimum f
 fb = ingest.chunk_sections(plain)
 check("fallback yields untitled chunks", [s["section_title"] for s in fb], [None, None])
 
+print("\n== corpus directories ==")
+# corpus/raw/ is gitignored and rebuilt per install; corpus/studio/ ships
+# with the repo for material that has no download_url. A manifest entry
+# resolves against either, studio first.
+check("studio dir is where ingest looks first",
+      ingest.source_path.__doc__ is not None and
+      (Path(__file__).parent / "corpus" / "studio").exists(), True)
+check("studio material resolves",
+      (ingest.source_path("site_analysis_topics.md") or Path("/nope")).parent.name,
+      "studio")
+check("an unfetched source resolves to None",
+      ingest.source_path("definitely_not_here_9f3a.txt"), None)
+
+print("\n== manifest is internally consistent ==")
+# Not "every source is present" — the primary texts still need their
+# archive.org identifiers, and that is a task, not a defect. What must
+# hold is that nothing is SILENTLY unobtainable: an entry with no way to
+# fetch it and no note explaining why would fail quietly at ingest and
+# leave a voice unexpectedly ungrounded.
+_manifest = json.loads((Path(__file__).parent / "corpus" / "manifest.json").read_text())
+_pending = 0
+for _e in _manifest:
+    _fetchable = "download_url" in _e or "wikipedia_title" in _e
+    _shipped = ingest.source_path(_e["file"]) is not None
+    if not (_fetchable or _shipped):
+        _pending += 1
+    check(f"{_e['id']}: fetchable, shipped, or explained",
+          _fetchable or _shipped or bool(_e.get("note")), True)
+    for _key in ("id", "title", "file", "type", "voice"):
+        check(f"{_e['id']}: has {_key}", _key in _e, True)
+    check(f"{_e['id']}: chunker type is known",
+          _e["type"] in ("prose", "chaptered"), True)
+    check(f"{_e['id']}: voice is known",
+          _e["voice"] in ("geddes", "librarian", "both"), True)
+print(f"  NOTE  {_pending} entr{'y' if _pending == 1 else 'ies'} still need a "
+      f"download_url (see README, Adding the primary texts)")
+
 print("\n== clean_ocr ==")
 check("rejoins hyphenated linebreak", "planning" in ingest.clean_ocr("plan-\nning"), True)
 check("collapses blank runs", ingest.clean_ocr("a\n\n\n\n\nb"), "a\n\nb")

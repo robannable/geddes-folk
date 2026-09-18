@@ -1,49 +1,54 @@
 # geddes-folk
 
 Conversations with **Patrick Geddes** (1854–1932) — biologist, sociologist, and
-pioneer of town planning as "people planning" — with a second voice, the
-Librarian, that checks what he claims and supplies what he leaves out.
+the man who insisted that town planning is really people planning.
 
-Forked from the [sharp-folk](https://github.com/robannable/sharp-folk) engine
-and carrying the cognitive-modes, named-user and analytics ideas from the
-Streamlit [Geddes-Ghost](https://github.com/robannable/Geddes-Ghost) it replaces.
+Two voices share the chat. Geddes speaks in his own framework, and a second
+voice, the Librarian, checks what he claims and supplies what he leaves out.
 
-> **Status: complete except the corpus.** Both voices, the three-way
-> classifier, cognitive modes, logging and the dashboard are built. Most of
-> the corpus is not fetched — see *What a fresh install actually indexes*.
+Built for architecture students, by Rob Annable at Birmingham School of
+Architecture, as part of an experiment in treating large language models as
+cultural technology and tools for thought.
 
 ## The two voices
 
-**Patrick Geddes** speaks in first person, self-aware as a ghost in a neural
-network — bold, eccentric, pushing for abductive leaps and unexpected
-connections. That is the character, and it is also the risk: a persona tuned to
-make confident cross-disciplinary claims will invent attributions, and these
-conversations are had with architecture students.
+**Patrick Geddes** speaks in the first person, self-aware as a ghost in a
+neural network — bold, associative, given to the abductive leap and the
+provocative question back. He owns his contested work rather than deflecting
+it, and he marks recollection as recollection instead of manufacturing a
+citation.
 
-**The Librarian** is the answer to that, on two tracks:
+**The Librarian** is a contemporary archivist sharing the conversation. It
+holds the archive and does the attribution work, on two tracks:
 
 | Verdict | Fires when | What the Librarian does |
 |---|---|---|
-| `SKIP` | neither below | stays silent |
-| `CHECK` | Geddes made a checkable claim — an attribution, quotation, date, figure or named work | verifies it against the corpus, and says plainly when it cannot be confirmed |
-| `CONTEXT` | contested ground — the Indian reports written for colonial administration, the Zionist Commission work and 1925 Tel Aviv plan, the anabolic/katabolic sex theory and its use against women's suffrage, paternalism about slum populations | supplies what Geddes left out, without rewriting his answer |
+| `CHECK` | Geddes made a checkable claim — an attribution, quotation, date, figure or named work | verifies it against the corpus, gives the reference, and says plainly when it cannot confirm |
+| `CONTEXT` | contested ground — the Indian reports written under British paramountcy, the Zionist Commission work and the 1925 Tel Aviv plan, the anabolic/katabolic theory and its use against women's suffrage, paternalism towards the poor | supplies what a student needs in order to judge, without rewriting his answer |
+| `SKIP` | neither | stays silent |
 
-Both verdicts are recorded per turn so false positives can be tuned on each
-track separately — which is the cost of running two trigger sets instead of one.
+A cheap classifier decides which, after every reply. Students can also summon
+the Librarian directly with the button beneath any of Geddes's answers.
+
+Both verdicts are logged separately, so false positives on each track can be
+tuned independently.
 
 ## Quick start
 
 ### Windows
 
-Double-click `run.bat`. First run creates `.venv`, installs dependencies
-(~1 GB, includes torch), copies `.env.example` → `.env` for your
-`ANTHROPIC_API_KEY`, then offers to **download the corpus and build the
-index** before launching.
+Double-click **`run.bat`**. The first run creates `.venv`, installs
+dependencies (~1 GB, includes torch), copies `.env.example` → `.env` for your
+`ANTHROPIC_API_KEY`, then offers to download the corpus and build the search
+index before launching. Later runs go straight to the app.
 
-Afterwards, `fetch.bat` downloads new manifest entries and `ingest.bat`
-rebuilds the index — the pair you'll want each time you add a
-`download_url` to the manifest. `dashboard.bat` renders the log report and
-opens it.
+Three companions, all using the same venv:
+
+| | |
+|---|---|
+| `fetch.bat` | download manifest entries into `corpus/raw/` |
+| `ingest.bat` | rebuild the search index |
+| `dashboard.bat` | export the log report and open it |
 
 ### Mac / Linux
 
@@ -51,130 +56,174 @@ opens it.
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env        # then add ANTHROPIC_API_KEY
-python fetch_corpus.py      # download the corpus (run locally — see below)
-python ingest.py            # build corpus/index/ (~130MB model download)
+python fetch_corpus.py      # download the corpus
+python ingest.py            # build the index (~130 MB model download, once)
 chainlit run app.py
 ```
 
+`run.sh` wraps all of that, including the first-run setup.
+
+Opens on http://localhost:8000.
+
 ### VPS
 
-`geddes-folk.service` is a systemd unit for the Chainlit app, adapted from
-Geddes-Ghost's. Adjust `WorkingDirectory` and `User` before installing.
+`geddes-folk.service` is a systemd unit for the app. Adjust `WorkingDirectory`
+and `User`, then `systemctl enable --now geddes-folk`.
 
-## Corpus
+## Using it
 
-`corpus/manifest.json` is split by **voice**:
+**Set your name** in the settings panel — the slider icon beside the message
+box. Geddes addresses you by it, and any of your own work in the corpus is
+surfaced ahead of the general material.
 
-- `"voice": "both"` — Geddes's own writings and the teaching material. Both
+The same panel has an **Effort** control. On *auto* it follows the kind of
+question asked; fix it yourself to override.
+
+Each reply carries an **Ask the Librarian** button, and two foldable panels
+showing what was retrieved and what the turn cost.
+
+## The corpus
+
+`corpus/manifest.json` lists every source. Each entry is split by **voice**:
+
+- `"both"` — Geddes's own writings and the studio's teaching material. Both
   voices see them; the Librarian quotes them when citing.
-- `"voice": "librarian"` — background and scholarship the Librarian alone sees.
+- `"librarian"` — background and scholarship the Librarian alone sees.
 
-and weighted by **`weight_class`**, carried over from Geddes-Ghost's
-`CONTEXT_WEIGHTS`: `student` (1.5×, and only visible to the named student who
-owns it), `project` (1.3×), `history` (1.2×), `general` (1.0×). The weights are
-multipliers on the FAISS similarity, applied before the top-k cut, so they can
-actually reorder results.
+and carries a **`weight_class`** that multiplies its similarity score before
+the top-k cut, so it can genuinely reorder results:
 
-`run.bat` / `run.sh` do the first fetch and ingest for you. Afterwards, or on
-a machine where you're driving it by hand:
+| Class | Weight | |
+|---|---|---|
+| `student` | 1.5× | a student's own uploaded work, visible only to them |
+| `project` | 1.3× | studio briefs and teaching material |
+| `history` | 1.2× | past conversation transcripts |
+| `general` | 1.0× | everything else |
 
-```bash
-python fetch_corpus.py                        # everything missing
-python fetch_corpus.py wiki_geddes            # selected ids
-python ingest.py                              # rebuild the index
-```
+### Adding a source
 
-On Windows: `fetch.bat` and `ingest.bat` wrap those two against the venv.
-
-Note that fetching has to happen on a machine with outbound access — Claude
-Code on the web sessions block archive.org, gutenberg.org and en.wikipedia.org,
-which is why the corpus isn't already in the repo.
-
-**Most book entries carry a `note` saying `UNVERIFIED` and have no
-`download_url`.** The archive.org identifiers were not confirmed — click
-through each `source_url`, find the item, and add its `_djvu.txt` link. The
-fetcher skips entries without a fetch field rather than guessing.
-
-### What a fresh install actually indexes
-
-Only 7 of the 12 manifest entries, and the split is lopsided:
-
-| Voice | Sources | What |
-|---|---:|---|
-| Geddes | 2 | the two teaching documents (974 words) — **none of his own writing** |
-| Librarian | 7 | those two, plus five Wikipedia articles |
-
-The five books are all `UNVERIFIED` and don't index. So out of the box Geddes
-is reconstructed almost entirely from what the model already knows about him,
-with nothing retrieved to hold him to, and the Librarian's CHECK track can
-catch a wrong date but cannot confirm a quotation or a page.
-
-This matters more than it looks: Geddes-Ghost ran on three documents, and a
-fact-checking Librarian with nothing to check against answers "I cannot confirm
-that" to everything. Corpus work gates the Librarian being useful at all, and
-*Cities in Evolution* is the one to find first — the valley section,
-conservative surgery and the diagnostic survey all live there, and that is most
-of what students will ask about.
-
-## Observation surfaces
-
-Per turn, `logs/YYYY-MM-DD.jsonl` records the user and their message, retrieved
-chunk metadata with scores and weight classes, each voice's reply and token
-usage, the classifier verdict, the cognitive mode and effort level, and a cost
-breakdown with a running session total.
-
-`logs/<date>.md` is re-rendered after every turn — conversation first, with
-chunks and token counts behind `<details>`. Re-render any day on demand:
+Add an entry with `id`, `title`, `file`, `type` (`prose` or `chaptered`),
+`voice`, `weight_class`, a `source_url` for citation, and one of
+`download_url` (direct plain-text fetch) or `wikipedia_title`. Then:
 
 ```bash
-python transcript.py             # today (UTC)
-python transcript.py 2026-09-18  # specific date
+python fetch_corpus.py                 # everything missing
+python fetch_corpus.py cities_in_evolution   # or just one
+python ingest.py                       # rebuild the index
 ```
 
-Cost rates live in `config.py:PRICES_USD_PER_MTOK` and are approximate; the
-Anthropic billing console is the source of truth. `cost_cents` returns `0.0`
-for a model missing from that table — silently, which is how the same tracking
-died in sharp-folk — so add a row before repointing `VOICE_MODEL`.
+Fetching needs outbound access to archive.org, gutenberg.org and Wikipedia, so
+run it on your own machine rather than from a web session.
+
+### Adding the primary texts
+
+Five entries are listed but have no `download_url` yet, because their
+archive.org identifiers need confirming by hand:
+
+| id | |
+|---|---|
+| `cities_in_evolution` | *Cities in Evolution* (1915) — start here |
+| `city_development` | the Dunfermline report (1904) |
+| `evolution_of_sex` | *The Evolution of Sex* (1889, with Thomson) |
+| `evolution_1911` | *Evolution* (1911, with Thomson) |
+| `indore_report` | the Indore town planning report (1918) |
+
+For each: open its `source_url`, find the item, copy the "Full Text" /
+`_djvu.txt` link into a `download_url` field, then fetch and re-ingest.
+
+*Cities in Evolution* is the one to do first — the valley section,
+conservative surgery and the diagnostic survey are all in it, and that is most
+of what students ask about.
+
+Until they are in, Geddes answers from what the model already knows rather
+than from retrieved passages, and the Librarian's `CHECK` track can catch a
+wrong date but cannot confirm a quotation. The **retrieval health** panel on
+the dashboard tracks exactly this.
 
 ## Dashboard
 
-Served by the running app at **`/dashboard`** — same host and port as the
-chat, no second process and no extra dependency. Chainlit runs on FastAPI
-and `dashboard.mount()` registers the route on that same server. It reads
-`logs/*.jsonl` per request, so reloading always shows the current state,
-and the day-range control at the top right filters it
-(`/dashboard?days=14`). A link appears in a folded step at the start of
-each chat.
+Served by the running app at **`/dashboard`** — same host and port as the chat.
+It reads the logs on each request, so a reload always shows the current state,
+and the control at the top right filters by date range. A link appears in a
+folded step at the start of every chat.
+
+**Overview** · **retrieval health** — what share of turns reached Geddes with
+a passage he can actually see · **Librarian triggers**, split by `CHECK` and
+`CONTEXT` so each track can be tuned separately · **cognitive modes** against
+reply length · **cost** per day by voice · **corpus usage** and how well each
+source scores · **students** · **what is being asked** · **interventions** —
+sources reached often but matched weakly · and a table of every turn.
 
 For a copy to keep or send on:
 
 ```bash
-python dashboard.py              # all logs  -> logs/dashboard.html
-python dashboard.py --days 14    # last fortnight
+python dashboard.py              # -> logs/dashboard.html
+python dashboard.py --days 14
 python dashboard.py --out /tmp/report.html
 ```
 
-`dashboard.bat` does the same on Windows and opens the result. Charts are
-inline SVG generated in Python rather than drawn by a charting library, so
-the page renders identically served, saved or emailed.
+Charts are inline SVG generated in Python, so the page renders identically
+served, saved or emailed, and the palette is validated for colour-vision
+deficiency in both light and dark.
 
-Panels: overview, **retrieval health** (what share of turns actually reached
-Geddes with a passage — the check the predecessor failed silently), Librarian
-triggers split by CHECK / CONTEXT so the two tracks can be tuned separately,
-cognitive modes against reply length, cost per day by voice, corpus usage,
-students, question keywords, interventions, and a table of every turn.
+## Logs
 
-Two things it deliberately does not do. There is no successor to
-Geddes-Ghost's temperature analysis — temperature is rejected by current
-models, so there is no continuous dial to plot response length against, and
-the cognitive-mode panel is the nearest honest equivalent. And the
-interventions panel reports scores against the median of the set it is
-looking at rather than an absolute threshold, because a similarity number
-only means something relative to the same corpus and embedding model.
+Every turn appends to `logs/YYYY-MM-DD.jsonl`: the student and their question,
+retrieved chunks with scores and weight classes, each voice's reply and token
+usage, the classifier verdict, the cognitive mode and effort, and a cost
+breakdown with a running session total.
 
-Colours come from a palette validated for colour-vision deficiency on all
-pairs in both light and dark. Adding a fourth series would break that, so
-extra categories fold into "other" rather than getting a new hue.
+`logs/<date>.md` is re-rendered after every turn as a readable transcript —
+conversation first, metadata behind `<details>`. Render any day on demand:
+
+```bash
+python transcript.py             # today (UTC)
+python transcript.py 2026-09-18
+```
+
+The JSONL is the source of truth; the Markdown and the dashboard are both
+views of it.
+
+## Configuration
+
+`config.py` holds everything that names or prices a model, plus the retrieval
+weights.
+
+| | |
+|---|---|
+| `VOICE_MODEL` | both voices — `claude-sonnet-5` |
+| `CLASSIFIER_MODEL` | the trigger classifier — `claude-haiku-4-5` |
+| `PRICES_USD_PER_MTOK` | approximate rates for cost estimation |
+| `CONTEXT_WEIGHTS` | the retrieval multipliers above |
+| `RETRIEVE_K` | passages retrieved per voice per turn |
+
+Add a row to `PRICES_USD_PER_MTOK` before pointing `VOICE_MODEL` at a new
+model, or its costs will report as zero. The Anthropic billing console is the
+authority on rates.
+
+Cognitive modes live in `modes.py`: `survey` → effort `medium`, `synthesis` →
+`high`, `proposition` → `xhigh`, each with its own prompt framing.
+
+The two prompts are plain text in `prompts/` and are meant to be edited.
+
+## Layout
+
+```
+app.py             Chainlit entrypoint — two voices, classifier, logging
+config.py          models, cost rates, retrieval weights
+modes.py           cognitive modes → effort levels
+retrieval.py       load the index, filter by voice and student, re-rank
+ingest.py          manifest → clean → chunk → embed → FAISS
+fetch_corpus.py    manifest → corpus/raw/
+session_log.py     per-turn JSONL + cost estimation
+transcript.py      JSONL → Markdown
+dashboard.py       log analysis, served at /dashboard or exported
+smoke.py           tests
+prompts/           Geddes persona, Librarian voice
+corpus/            manifest.json, raw/ texts, index/ (generated)
+public/            portrait served at /public/
+chainlit.md        welcome screen
+```
 
 ## Tests
 
@@ -182,66 +231,14 @@ extra categories fold into "other" rather than getting a new hue.
 python smoke.py
 ```
 
-Runs without faiss or torch installed. Covers chunking, OCR cleanup, student
-name matching, retrieval weighting, cost estimation, mode detection, effort
-resolution, transcript rendering and dashboard analysis.
+Covers chunking, OCR cleanup, student name matching, retrieval weighting, cost
+estimation, mode detection, effort resolution, transcript rendering and
+dashboard analysis — and runs without faiss or torch installed.
 
-Run it inside `.venv`, where Chainlit is installed, and it also exercises the
-`/dashboard` route against a real Chainlit server — including that the route
-is matched ahead of Chainlit's catch-all, which is the failure that makes
-`/dashboard` silently return the chat page with a 200. Outside `.venv` that
-block skips with a note.
+Run it inside `.venv` and it additionally exercises the `/dashboard` route
+against a real Chainlit server. Outside `.venv` that block skips with a note.
 
-Not a substitute for `python ingest.py` and a real conversation.
+## Reference
 
-## Where this is up to
-
-Built:
-
-```
-app.py             Chainlit entrypoint — two voices, three-way classifier
-modes.py           cognitive modes → output_config.effort
-config.py          models, labels, cost rates, retrieval weights
-ingest.py          manifest → clean → chunk (prose / chaptered) → embed → FAISS
-retrieval.py       load index, voice + student filtering, weighted re-rank
-session_log.py     per-turn JSONL + cost estimation
-transcript.py      JSONL → Markdown
-fetch_corpus.py    manifest → corpus/raw/
-dashboard.py       log analysis; served at /dashboard, or exported
-prompts/           Geddes persona, Librarian voice
-smoke.py           97 assertions (80 without chainlit installed)
-```
-
-Not built:
-
-- **The corpus.** Most manifest entries are `UNVERIFIED` with no
-  `download_url`. Until they're fetched, the Librarian's CHECK track has almost
-  nothing to check against and will correctly but uselessly answer "I can't
-  confirm that".
-- **Transcripts as corpus.** Fold yesterday's `logs/<date>.md` back in as a
-  per-user `history` source, so the tool accumulates a memory of a cohort.
-
-## Cognitive modes
-
-Carried over from Geddes-Ghost, with one forced change. It varied `temperature`
-per mode (survey 0.7, synthesis 0.8, proposition 0.9); `temperature`, `top_p`
-and `top_k` are rejected with a 400 on every current model. The nearest
-equivalent is `output_config.effort`, which governs how much the model thinks
-rather than how randomly it samples:
-
-| Mode | Triggered by | Effort |
-|---|---|---|
-| survey | what, describe, observe, where, when | `medium` |
-| synthesis | how, connect, relate, pattern, between | `high` |
-| proposition | why, propose, imagine, design, future | `xhigh` |
-
-The prompt prefixes and guidance paragraphs survive unchanged — they were
-always doing more of the work than the sampler was. Override the effort level
-in the settings panel; the mode still follows from the question, so the prose
-steering stays.
-
-Known collision, left alone: "survey", "plan", "pattern" and "design" are mode
-keywords *and* central Geddes terms, so a question about his diagnostic survey
-scores toward survey mode whatever it asks. The scorer is crude on purpose. If
-the logs show modes consistently misread, prune the keyword lists before adding
-machinery.
+Design rationale, the reasoning behind the two-voice split, and handover notes
+for further work are in [CLAUDE.md](CLAUDE.md).

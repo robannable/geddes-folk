@@ -98,8 +98,11 @@ negative hides their work from them, which is worse.
 
 ## Bugs inherited and fixed — don't reintroduce
 
-**From Geddes-Ghost** (fixed on its `claude/gifted-dirac-dbefq9` branch, commit
-`7f3fa04`, as the baseline for this port):
+**From Geddes-Ghost.** Found while reading it before the port, and described
+here so they aren't rebuilt. They are defects in the Streamlit app, not in this
+one — that repo is a separate concern with its own sessions working on it, and
+nothing here needs porting back or forth. Diagnoses below; the geddes-folk
+equivalents were written correctly from the start rather than patched.
 
 - `load_documents` tagged chunks with the bare basename, but the categorisers
   in `weight_context_chunks` and `assemble_enhanced_context` test for
@@ -197,9 +200,11 @@ the source has no chapters.
    should hold itself to the same standard. Say "unverified, check X" rather
    than producing a plausible identifier — see the `note` fields in the
    manifest.
-5. **sharp-folk and Geddes-Ghost are siblings, not dumping grounds.** Rob
-   accepted three codebases knowingly. Fixes that apply to all three still have
-   to be made in all three by hand.
+5. **Work here, only here.** sharp-folk and Geddes-Ghost are siblings with
+   their own sessions running against them. Do not push to either from a
+   geddes-folk session, even to carry a fix across — raise it with Rob and let
+   him decide where it lands. He accepted three codebases knowingly; the cost
+   is that a shared fix gets made three times, by hand, deliberately.
 
 ## Provenance
 

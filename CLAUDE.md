@@ -84,6 +84,43 @@ classifier on `claude-haiku-4-5`.
   its own config. Verify with `usage.cache_read_input_tokens > 0` rather than
   reasoning about it.
 
+### Dashboard: a file, not a server
+
+`dashboard.py` reads `logs/*.jsonl` and writes one self-contained HTML
+file — inline SVG, no server, no external requests, standard library only.
+The plan said Streamlit, following Geddes-Ghost; Rob's standing preference
+is single-file HTML, vanilla JS, no frameworks, running offline and on a
+phone, so it was built that way instead and he was told. Reverting to
+Streamlit is a contained rewrite of one file if he ever wants it.
+
+Nothing imports it and it imports nothing from the app. Geddes-Ghost's
+1,200-line `admin_dashboard.py` held `ResponseEvaluator`, which
+`geddesghost.py` then imported back out of it; that knot is not recreated.
+
+Two deliberate absences:
+
+- **No temperature panel.** There is no continuous dial left to plot
+  response length against. The cognitive-mode panel is the nearest honest
+  equivalent, and it is thinner — five effort levels, governing thinking
+  depth rather than sampling.
+- **No absolute score threshold.** The interventions panel compares each
+  source to the median of the set on screen and says so. A similarity score
+  only means something relative to the same corpus and embedding model, so
+  a fixed "0.5 = well grounded" line would be an invented number presented
+  as a judgement — the thing this project exists to avoid.
+
+The **retrieval health** panel is the one to watch. It reports what share
+of turns reached Geddes with at least one passage tagged `geddes` or
+`both`. A librarian-only chunk does not count, because it never reached
+him. Both predecessors failed silently in exactly this way.
+
+Chart colours are three slots from a palette validated for colour-vision
+deficiency on all pairs in both modes. A fourth slot puts yellow next to
+orange and fails; fold extra categories into "other" instead. Light-mode
+aqua sits below 3:1 contrast, which is why every chart carries a legend,
+direct value labels and the table view — remove one and the relief rule
+breaks.
+
 ### Retrieval weighting
 
 `weight_class` on each manifest entry becomes a multiplier on the FAISS
@@ -140,11 +177,13 @@ geddes-folk/
 ├── transcript.py       JSONL → Markdown (auto-called from log_turn)
 ├── fetch_corpus.py     manifest → corpus/raw/ (run locally; IA/Gutenberg/
 │                       Wikipedia blocked from web sessions)
+├── dashboard.py        logs/*.jsonl -> one self-contained HTML report
 ├── smoke.py            engine tests; runs without faiss/torch
 ├── corpus/manifest.json
 ├── corpus/raw/         two teaching docs present; books not fetched
 ├── public/patrick_geddes.jpg
-├── run.sh / run.bat / ingest.bat / geddes-folk.service
+├── run.sh / run.bat / fetch.bat / ingest.bat / dashboard.bat
+│                       + geddes-folk.service
 └── requirements.txt, .env.example, README.md, CLAUDE.md
 ```
 
@@ -157,34 +196,56 @@ the source has no chapters.
 
 ## Not yet built
 
-1. **`app.py`** — Chainlit entrypoint. Follow sharp-folk's shape: retrieve →
-   voice → classifier → conditional second voice → log, with `cl.Step` panels
-   for retrieval and cost, and an "Ask the Librarian" action. Differences: a
-   named user (Geddes-Ghost asked for a name; retrieval weighting needs it), a
-   three-way classifier verdict, and cognitive modes.
-2. **`modes.py`** — keyword scorer and prompt prefixes from
-   `GeddesCognitiveModes` carried over intact; temperature mapping replaced by
-   `survey → medium`, `synthesis → high`, `proposition → xhigh`. The
-   temperature-guidance paragraphs appended to the character prompt survive
-   unchanged — that half was always doing the work a sampling parameter wasn't.
-   Manual override becomes a Chainlit chat setting picking effort directly.
-3. **Prompts** — port `patrick_geddes_prompt.txt`, minus the free-citation
-   instruction. Write the Librarian fresh against the two-track spec above;
-   sharp-folk's `librarian_voice.txt` is the model for tone, not content.
-4. **`dashboard.py`** — Streamlit over `logs/*.jsonl`. Ports from
-   Geddes-Ghost's `admin_dashboard.py`: response metrics, document usage, user
-   analysis, topics map, conversation insights, interventions, model usage.
-   New: cost trends, and Librarian trigger rates split by verdict. The
-   temperature tab has no honest equivalent — five effort levels against a
-   continuous range, governing thinking depth rather than sampling. 1,200
-   lines and the port is not mechanical: `st.session_state` has no Chainlit
-   equivalent, and `ResponseEvaluator` currently lives in the dashboard and is
-   imported back into the app, which needs untangling first.
-5. **Corpus.** The gating item. See README; most manifest entries are
-   `UNVERIFIED` with no `download_url`.
-6. **Transcripts as corpus.** sharp-folk lacks this and Geddes-Ghost had it:
-   fold yesterday's `logs/<date>.md` back in as a per-user `history` source so
-   the tool accumulates a memory of a cohort across sessions.
+Everything in the plan is built except the corpus. `app.py`, `modes.py`,
+both prompts and `dashboard.py` all exist and `smoke.py` covers them.
+
+1. **The corpus. The gating item, and it needs a machine with outbound
+   access — not a web session.** Five of twelve manifest entries are
+   `UNVERIFIED` with no `download_url`: every one of Geddes's own books.
+   A fresh install indexes 7 entries, only 2 of which Geddes can see, and
+   neither is his writing. Until that changes he answers from model
+   knowledge with nothing retrieved to hold him to, and the Librarian's
+   CHECK track can catch a wrong date but cannot confirm a quotation.
+   Click through each entry's `source_url`, find the archive.org item, add
+   its `_djvu.txt` as `download_url`, then fetch and re-ingest. *Cities in
+   Evolution* first — the valley section, conservative surgery and the
+   diagnostic survey are all in it.
+
+   Do not invent archive.org identifiers. They look plausible and 404, and
+   the fetcher is written to skip an entry rather than guess.
+
+2. **Transcripts as corpus.** sharp-folk lacks this and Geddes-Ghost had
+   it: fold yesterday's `logs/<date>.md` back in as a per-user `history`
+   source, so the tool accumulates a memory of a cohort across sessions.
+   The `history` weight class (1.2) and the `owner` field already exist
+   for it.
+
+3. **Tuning, once there are real logs.** The dashboard exists to be read,
+   not admired. Watch the retrieval-health percentage first; then the
+   CHECK/CONTEXT split for false positives on each track separately; then
+   whether the mode keyword scorer is misreading questions, given that
+   "survey", "plan", "pattern" and "design" are mode keywords and also
+   central Geddes terms.
+
+## Unverified — check before trusting
+
+Written down because this project's whole point is not passing off
+plausible things as checked:
+
+- **The contested-material list** in the persona, the classifier prompt and
+  above. Recalled, not checked against sources.
+- **The Chainlit settings API** — `from chainlit.input_widget import Select,
+  TextInput` and `cl.ChatSettings([...]).send()`. Written from
+  documentation knowledge; Chainlit was not installed in the session that
+  wrote it, and sharp-folk has no settings panel to copy.
+- **The `.bat` files.** `run.sh` was syntax-checked; the batch files were
+  not executed. The delayed-expansion block in `run.bat` and its escaped
+  parens are the fussy parts.
+- **`SECTION_HEADER` in `ingest.py`.** Only ever met synthetic fixtures.
+  Real djvu OCR of a 1915 book will likely need it widened; the tell is
+  `chunk_sections` silently falling back to prose chunking.
+- **Whether Sonnet 5 holds the voice.** Not compared side by side against
+  anything.
 
 ## Constraints — please respect
 

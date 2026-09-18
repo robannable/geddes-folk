@@ -30,7 +30,7 @@ for name in ("faiss", "sentence_transformers", "numpy"):
             sys.modules[name] = m
 
 sys.path.insert(0, str(Path(__file__).parent))
-import ingest, retrieval, session_log, transcript, config, modes
+import ingest, retrieval, session_log, transcript, config, modes, dashboard
 
 ok = fail = 0
 def check(label, got, want):
@@ -165,6 +165,64 @@ check("AUTO is auto", (e, src), ("medium", "auto (survey)"))
 for mo in modes.MODES:
     check(f"{mo.name}: effort is a real level", mo.effort in modes.EFFORT_LEVELS, True)
     check(f"{mo.name}: has guidance text", bool(mo.guidance.strip()), True)
+
+print("\n== dashboard axis ticks ==")
+# Counts must get whole-number ticks; an axis reading 1.875 turns is noise.
+for v, want_int in [(7, True), (3, True), (23, True), (1, True)]:
+    ymax, n = dashboard._axis(v, integer=True)
+    ticks = [ymax * i / n for i in range(n + 1)]
+    check(f"max={v}: ticks are whole numbers {ticks}",
+          all(abs(t - round(t)) < 1e-9 for t in ticks), True)
+    check(f"max={v}: axis covers the data", ymax >= v, True)
+check("zero data still gives an axis", dashboard._axis(0, True)[0] > 0, True)
+
+print("\n== dashboard analysis ==")
+from datetime import datetime, timezone
+def _turn(day, verdict, mode, chunks, cost, user="Rob", kind="turn"):
+    return {"ts": f"2026-09-{day:02d}T10:00:00+00:00", "kind": kind,
+            "_when": datetime(2026, 9, day, 10, tzinfo=timezone.utc),
+            "_day": f"2026-09-{day:02d}", "user_name": user,
+            "user": "what is the valley section",
+            "mode": {"name": mode, "effort": "high", "source": f"auto ({mode})"} if mode else None,
+            "context_chunks": chunks,
+            "geddes": {"text": "a b c", "usage": {"in": 1, "out": 1, "cache_read": 0, "cache_write": 0}},
+            "classifier": {"verdict": verdict, "usage": {"in": 1, "out": 1, "cache_read": 0, "cache_write": 0}} if verdict else None,
+            "librarian": None,
+            "cost_cents": {"geddes": cost, "classifier": 0, "librarian": 0,
+                           "turn_total": cost, "session_total": cost}}
+
+GED = {"id": "a:1", "source_title": "Cities in Evolution", "voice": "both", "score": 0.6}
+LIB = {"id": "b:1", "source_title": "Patrick Geddes (Wikipedia)", "voice": "librarian", "score": 0.4}
+
+a = dashboard.analyse([
+    _turn(1, "CHECK", "survey", [GED], 1.0),
+    _turn(1, "SKIP", "synthesis", [], 2.0),
+    _turn(2, "CONTEXT", "proposition", [LIB], 3.0, user="Amara"),
+])
+check("counts conversational turns", len(a["convo"]), 3)
+check("groups by day", a["days"], ["2026-09-01", "2026-09-02"])
+check("tallies verdicts", dict(a["verdicts"]), {"CHECK": 1, "SKIP": 1, "CONTEXT": 1})
+check("sums cost", round(a["total_cost"], 2), 6.0)
+# A librarian-only chunk does not count as grounding for Geddes — that
+# distinction is the whole point of the retrieval-health panel.
+check("grounded counts only geddes-visible chunks", a["grounded"], 1)
+check("ungrounded counts the rest", a["ungrounded"], 2)
+check("tracks both users", sorted(a["users"]), ["Amara", "Rob"])
+check("per-day verdict series aligns with days",
+      [len(v) for v in a["per_day_verdict"].values()], [2, 2, 2])
+
+print("\n== dashboard renders without a browser ==")
+html_out = dashboard.render(a, "2026-09-18 10:00 UTC", "all logs")
+check("is a complete document", html_out.strip().startswith("<!DOCTYPE html>"), True)
+check("closes the document", html_out.strip().endswith("</html>"), True)
+check("makes no external requests", "http://" not in html_out and "https://" not in html_out, True)
+check("declares dark mode under both scopes",
+      'prefers-color-scheme:dark' in html_out and '[data-theme="dark"]' in html_out, True)
+check("names both students", "Amara" in html_out and "Rob" in html_out, True)
+check("states the retrieval-health percentage", "%" in html_out, True)
+
+empty = dashboard.analyse([])
+check("empty logs do not crash", dashboard.render(empty, "x", "y").count("<section>") > 0, True)
 
 print(f"\n{ok} passed, {fail} failed")
 sys.exit(1 if fail else 0)

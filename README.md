@@ -8,9 +8,9 @@ Forked from the [sharp-folk](https://github.com/robannable/sharp-folk) engine
 and carrying the cognitive-modes, named-user and analytics ideas from the
 Streamlit [Geddes-Ghost](https://github.com/robannable/Geddes-Ghost) it replaces.
 
-> **Status: app runs; corpus is the gap.** Both voices, the three-way
-> classifier, cognitive modes and logging are wired. The dashboard is not
-> built, and most of the corpus is not fetched — see *Where this is up to*.
+> **Status: complete except the corpus.** Both voices, the three-way
+> classifier, cognitive modes, logging and the dashboard are built. Most of
+> the corpus is not fetched — see *What a fresh install actually indexes*.
 
 ## The two voices
 
@@ -42,7 +42,8 @@ index** before launching.
 
 Afterwards, `fetch.bat` downloads new manifest entries and `ingest.bat`
 rebuilds the index — the pair you'll want each time you add a
-`download_url` to the manifest.
+`download_url` to the manifest. `dashboard.bat` renders the log report and
+opens it.
 
 ### Mac / Linux
 
@@ -135,6 +136,37 @@ Anthropic billing console is the source of truth. `cost_cents` returns `0.0`
 for a model missing from that table — silently, which is how the same tracking
 died in sharp-folk — so add a row before repointing `VOICE_MODEL`.
 
+## Dashboard
+
+```bash
+python dashboard.py              # all logs  -> logs/dashboard.html
+python dashboard.py --days 14    # last fortnight
+python dashboard.py --out /tmp/report.html
+```
+
+One self-contained HTML file: inline SVG charts, no server, no external
+requests, no dependencies beyond the standard library. It opens from disk,
+off a file share, on a phone or from the VPS. On Windows, `dashboard.bat`
+renders and opens it.
+
+Panels: overview, **retrieval health** (what share of turns actually reached
+Geddes with a passage — the check the predecessor failed silently), Librarian
+triggers split by CHECK / CONTEXT so the two tracks can be tuned separately,
+cognitive modes against reply length, cost per day by voice, corpus usage,
+students, question keywords, interventions, and a table of every turn.
+
+Two things it deliberately does not do. There is no successor to
+Geddes-Ghost's temperature analysis — temperature is rejected by current
+models, so there is no continuous dial to plot response length against, and
+the cognitive-mode panel is the nearest honest equivalent. And the
+interventions panel reports scores against the median of the set it is
+looking at rather than an absolute threshold, because a similarity number
+only means something relative to the same corpus and embedding model.
+
+Colours come from a palette validated for colour-vision deficiency on all
+pairs in both light and dark. Adding a fourth series would break that, so
+extra categories fold into "other" rather than getting a new hue.
+
 ## Tests
 
 ```bash
@@ -142,8 +174,9 @@ python smoke.py
 ```
 
 Runs without faiss or torch installed. Covers chunking, OCR cleanup, student
-name matching, retrieval weighting, cost estimation and transcript rendering.
-Not a substitute for `python ingest.py` and a real conversation.
+name matching, retrieval weighting, cost estimation, mode detection, effort
+resolution, transcript rendering and dashboard analysis. Not a substitute for
+`python ingest.py` and a real conversation.
 
 ## Where this is up to
 
@@ -158,16 +191,13 @@ retrieval.py       load index, voice + student filtering, weighted re-rank
 session_log.py     per-turn JSONL + cost estimation
 transcript.py      JSONL → Markdown
 fetch_corpus.py    manifest → corpus/raw/
+dashboard.py       logs/*.jsonl → one self-contained HTML report
 prompts/           Geddes persona, Librarian voice
-smoke.py           56 assertions, no faiss/torch needed
+smoke.py           80 assertions, no faiss/torch needed
 ```
 
 Not built:
 
-- **`dashboard.py`** — analytics over `logs/*.jsonl`. Ports from Geddes-Ghost's
-  `admin_dashboard.py`: response metrics, document usage, user analysis, topics
-  map, conversation insights, interventions. New: cost trends, and classifier
-  verdict rates split by track. The temperature tab has no honest equivalent.
 - **The corpus.** Most manifest entries are `UNVERIFIED` with no
   `download_url`. Until they're fetched, the Librarian's CHECK track has almost
   nothing to check against and will correctly but uselessly answer "I can't

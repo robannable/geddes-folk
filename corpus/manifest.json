@@ -7,8 +7,9 @@
     "type": "chaptered",
     "voice": "both",
     "weight_class": "general",
-    "source_url": "https://archive.org/search?query=cities+in+evolution+geddes",
-    "note": "UNVERIFIED: find the archive.org item and add its _djvu.txt as download_url. The central text — retrieval quality for planning questions depends on this one."
+    "source_url": "https://archive.org/details/citiesinevolutio00gedduoft",
+    "note": "VERIFIED 2026-09-18: University of Toronto scan of the 1915 Williams & Norgate first edition, 59 illustrations. Item and _djvu.txt confirmed on archive.org. Other copies exist (DLI scans in.ernet.dli.2015.31999, dli.ernet.233417; Wellcome b29810267) but the Toronto one has the cleanest OCR.",
+    "download_url": "https://archive.org/download/citiesinevolutio00gedduoft/citiesinevolutio00gedduoft_djvu.txt"
   },
   {
     "id": "city_development",
@@ -18,8 +19,9 @@
     "type": "chaptered",
     "voice": "both",
     "weight_class": "general",
-    "source_url": "https://archive.org/search?query=city+development+geddes+dunfermline",
-    "note": "UNVERIFIED: add download_url once the archive.org identifier is confirmed."
+    "source_url": "https://archive.org/details/citydevelopment00geddgoog",
+    "note": "VERIFIED 2026-09-18: Google/University of Michigan scan, 1904 Geddes & Co edition, 240 pp. _djvu.txt (820 KB) confirmed. Google scans can have weaker OCR and the book is plate-heavy with fold-outs — check chapter boundaries after ingest. No non-Google copy found on archive.org.",
+    "download_url": "https://archive.org/download/citydevelopment00geddgoog/citydevelopment00geddgoog_djvu.txt"
   },
   {
     "id": "evolution_of_sex",
@@ -29,8 +31,9 @@
     "type": "chaptered",
     "voice": "both",
     "weight_class": "general",
-    "source_url": "https://archive.org/search?query=evolution+of+sex+geddes+thomson",
-    "note": "UNVERIFIED. Primary source for the anabolic/katabolic theory and its use in arguments against women's suffrage and higher education — the Librarian's CONTEXT track needs this to cite rather than paraphrase."
+    "source_url": "https://archive.org/details/ost-biology-evolutionofsex00gedd",
+    "note": "VERIFIED 2026-09-18: 1890 Scribner & Welford printing of the 1889 first edition (Contemporary Science Series), 400 ppi, _djvu.txt (728 KB) confirmed. Primary source for the anabolic/katabolic theory and its use in arguments against women's suffrage and higher education — the Librarian's CONTEXT track needs this to cite rather than paraphrase. Alternatives: evolutionsex00thomgoog / evolutionsex01geddgoog (Google scans of 1889); b21729888 (Wellcome) is the 1901 revised edition — different text, do not mix.",
+    "download_url": "https://archive.org/download/ost-biology-evolutionofsex00gedd/evolutionofsex00gedd_djvu.txt"
   },
   {
     "id": "evolution_1911",
@@ -40,8 +43,9 @@
     "type": "chaptered",
     "voice": "both",
     "weight_class": "general",
-    "source_url": "https://archive.org/search?query=evolution+geddes+thomson+1911",
-    "note": "UNVERIFIED: Home University Library volume. Add download_url once confirmed."
+    "source_url": "https://archive.org/details/evolutio00gedd",
+    "note": "VERIFIED 2026-09-18 (item and PDF); _djvu.txt path follows the standard pattern for this scan family but was not fetched — check on first run. Home University Library No. 14, Holt/Williams & Norgate 1911, University of California Libraries copy via BHL. 8 chapters, bibliography pp. 249-256.",
+    "download_url": "https://archive.org/download/evolutio00gedd/evolutio00gedd_djvu.txt"
   },
   {
     "id": "indore_report",
@@ -51,10 +55,11 @@
     "type": "chaptered",
     "voice": "both",
     "weight_class": "general",
-    "source_url": "https://archive.org/search?query=geddes+indore+town+planning",
-    "note": "UNVERIFIED. Written for a princely state under British paramountcy — primary material for the Librarian's CONTEXT track on the Indian reports. May be two volumes; check before adding download_url."
+    "source_url": "https://archive.org/details/IndoreGeddes1",
+    "note": "VERIFIED 2026-09-18: two volumes, Holkar State Printing Press 1918, uploaded by user shyamal. Part 1 _djvu.txt (872 KB) confirmed; Part 2 item confirmed (archive.org/details/IndoreGeddes2) but its _djvu.txt filename is inferred from the Part 1 pattern — check the space-in-filename encoding on first run. Part 2 contains the University of Central India proposal. Loader needs to concatenate both files, or treat download_url_part2 as a second segment. Written for a princely state under British paramountcy — primary material for the Librarian's CONTEXT track on the Indian reports.",
+    "download_url": "https://archive.org/download/IndoreGeddes1/Indore%20Geddes1_djvu.txt",
+    "download_url_part2": "https://archive.org/download/IndoreGeddes1/Indore%20Geddes1_djvu.txt"
   },
-
   {
     "id": "wiki_geddes",
     "title": "Patrick Geddes (Wikipedia)",
@@ -106,7 +111,6 @@
     "wikipedia_title": "White City (Tel Aviv)",
     "note": "Covers the 1925 Geddes plan. Verify the article actually discusses it; if thin, find a better secondary source for the Librarian's CONTEXT track."
   },
-
   {
     "id": "site_analysis_topics",
     "title": "Site Analysis Topics — Folk, Work, Place",

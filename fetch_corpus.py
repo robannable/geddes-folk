@@ -1,7 +1,11 @@
 """Download corpus texts listed in corpus/manifest.json into corpus/raw/.
 
 Two fetch modes per entry:
-  - `download_url`     : direct GET, saved as-is.
+  - `download_url`     : direct GET, saved as-is. An entry may add
+                         `download_url_part2`, `_part3`... for a work
+                         split across several archive.org items (the
+                         Indore report is two volumes); the parts are
+                         fetched in order and concatenated into one file.
   - `wikipedia_title`  : Wikipedia REST API, plain-text extract saved.
 
 Entries already present locally are skipped, so this is safe to re-run.
@@ -24,6 +28,7 @@ longer filenames that need to be looked up by hand.
 """
 
 import json
+import re
 import sys
 import urllib.parse
 from pathlib import Path
@@ -68,11 +73,30 @@ def fetch_wikipedia(title: str) -> str:
     return extract
 
 
+def download_urls(entry: dict) -> list[str]:
+    """Every URL for an entry, in order: download_url then _partN.
+
+    A work split across archive.org items — the Indore report is two
+    volumes — lists the rest as `download_url_part2`, `_part3` and so on.
+    Sorted numerically, so _part10 follows _part9 rather than _part1.
+    """
+    urls = []
+    if "download_url" in entry:
+        urls.append(entry["download_url"])
+    parts = []
+    for key, value in entry.items():
+        m = re.fullmatch(r"download_url_part(\d+)", key)
+        if m:
+            parts.append((int(m.group(1)), value))
+    urls.extend(v for _, v in sorted(parts))
+    return urls
+
+
 def fetch_one(entry: dict) -> str:
-    # Studio material ships with the repo and has no download_url; never
+    # Studio material is placed by hand and is not fetchable; never
     # report it as a failure or try to overwrite it.
     if (STUDIO / entry["file"]).exists():
-        return f"skip {entry['id']}: ships with the repo (corpus/studio/)"
+        return f"skip {entry['id']}: present in corpus/studio/"
 
     file_path = RAW / entry["file"]
     if file_path.exists():
@@ -83,13 +107,23 @@ def fetch_one(entry: dict) -> str:
         print(f"  fetching {entry['id']}")
         print(f"    Wikipedia: {title}")
         text = fetch_wikipedia(title)
-    elif "download_url" in entry:
-        url = entry["download_url"]
-        print(f"  fetching {entry['id']}")
-        print(f"    {url}")
-        text = fetch_url(url)
+    elif download_urls(entry):
+        urls = download_urls(entry)
+        print(f"  fetching {entry['id']}"
+              + (f" ({len(urls)} parts)" if len(urls) > 1 else ""))
+        segments = []
+        for i, url in enumerate(urls, 1):
+            print(f"    {url}")
+            segment = fetch_url(url)
+            # A blank line between parts so the paragraph chunker does
+            # not run the end of one volume into the start of the next.
+            segments.append(segment)
+            if len(urls) > 1:
+                print(f"      part {i}: {len(segment):,} chars")
+        text = "\n\n".join(segments)
     else:
-        return f"skip {entry['id']}: no download_url or wikipedia_title"
+        return (f"skip {entry['id']}: no download_url or wikipedia_title "
+                f"— place {entry['file']} in corpus/studio/ by hand")
 
     RAW.mkdir(parents=True, exist_ok=True)
     file_path.write_text(text, encoding="utf-8")

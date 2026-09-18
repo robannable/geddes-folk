@@ -56,9 +56,9 @@
     "voice": "both",
     "weight_class": "general",
     "source_url": "https://archive.org/details/IndoreGeddes1",
-    "note": "VERIFIED 2026-09-18: two volumes, Holkar State Printing Press 1918, uploaded by user shyamal. Part 1 _djvu.txt (872 KB) confirmed; Part 2 item confirmed (archive.org/details/IndoreGeddes2) but its _djvu.txt filename is inferred from the Part 1 pattern — check the space-in-filename encoding on first run. Part 2 contains the University of Central India proposal. Loader needs to concatenate both files, or treat download_url_part2 as a second segment. Written for a princely state under British paramountcy — primary material for the Librarian's CONTEXT track on the Indian reports.",
+    "note": "VERIFIED 2026-09-18: two volumes, Holkar State Printing Press 1918, uploaded by user shyamal. Part 1 _djvu.txt (872 KB) confirmed; Part 2 item confirmed (archive.org/details/IndoreGeddes2) but its _djvu.txt filename is inferred from the Part 1 pattern — check the space-in-filename encoding on first run. Part 2 contains the University of Central India proposal. fetch_corpus.py concatenates download_url and any download_url_partN into one file, in order. Written for a princely state under British paramountcy — primary material for the Librarian's CONTEXT track on the Indian reports.",
     "download_url": "https://archive.org/download/IndoreGeddes1/Indore%20Geddes1_djvu.txt",
-    "download_url_part2": "https://archive.org/download/IndoreGeddes1/Indore%20Geddes1_djvu.txt"
+    "download_url_part2": "https://archive.org/download/IndoreGeddes2/Indore%20Geddes2_djvu.txt"
   },
   {
     "id": "wiki_geddes",
@@ -119,7 +119,7 @@
     "voice": "both",
     "weight_class": "project",
     "source_url": "",
-    "note": "Teaching material carried over from Geddes-Ghost/documents/."
+    "note": "LOCAL: place this file in corpus/studio/ yourself — studio material is not tracked and not fetchable. Carried over from Geddes-Ghost/documents/."
   },
   {
     "id": "ethnographic_observation",
@@ -129,6 +129,6 @@
     "voice": "both",
     "weight_class": "project",
     "source_url": "",
-    "note": "Teaching material carried over from Geddes-Ghost/documents/."
+    "note": "LOCAL: place this file in corpus/studio/ yourself — studio material is not tracked and not fetchable. Carried over from Geddes-Ghost/documents/."
   }
 ]

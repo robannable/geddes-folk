@@ -84,12 +84,18 @@ showing what was retrieved and what the turn cost.
 
 ## The corpus
 
-Corpus texts are **built per install, not shipped**. `corpus/raw/` and
-`corpus/index/` are gitignored, so a clone stays small and nobody commits a
-500 KB djvu dump; `fetch_corpus.py` downloads the texts and `ingest.py` builds
-the index. Material that belongs to the repo and has no `download_url` —
-teaching notes, studio briefs — lives in `corpus/studio/` and is tracked.
-A manifest entry resolves against either directory, studio first.
+The corpus is **built per install, not shipped**. A clone carries the
+manifest and nothing else, so nobody commits a 500 KB djvu dump and each
+install's corpus is its own.
+
+| | |
+|---|---|
+| `corpus/raw/` | fetched from the manifest by `fetch_corpus.py` |
+| `corpus/studio/` | your own material — teaching notes, briefs, PDFs — placed by hand |
+| `corpus/index/` | built from both by `ingest.py` |
+
+All three are gitignored. A manifest entry resolves against `studio/` first,
+then `raw/`, so a local file beats a re-download.
 
 `corpus/manifest.json` lists every source. Each entry is split by **voice**:
 
@@ -138,30 +144,32 @@ dependency for a job better done once, outside the tool.
 Ingest isolates each source, so a corrupt or unreadable file costs its own
 chunks and nothing else.
 
-### Adding the primary texts
+### What's in the manifest
 
-Five entries are listed but have no `download_url` yet, because their
-archive.org identifiers need confirming by hand:
+Five primary texts, five Wikipedia articles for the Librarian's background
+layer, and two studio documents you place yourself:
 
 | id | |
 |---|---|
-| `cities_in_evolution` | *Cities in Evolution* (1915) — start here |
+| `cities_in_evolution` | *Cities in Evolution* (1915) — the central text |
 | `city_development` | the Dunfermline report (1904) |
 | `evolution_of_sex` | *The Evolution of Sex* (1889, with Thomson) |
 | `evolution_1911` | *Evolution* (1911, with Thomson) |
-| `indore_report` | the Indore town planning report (1918) |
+| `indore_report` | the Indore town planning report (1918), two volumes |
 
-For each: open its `source_url`, find the item, copy the "Full Text" /
-`_djvu.txt` link into a `download_url` field, then fetch and re-ingest.
+Each carries a `note` recording which scan was chosen and why, and where the
+alternatives are. Worth reading before swapping one out — `evolution_of_sex`
+in particular has a 1901 revised edition on archive.org that is a different
+text and should not be mixed in.
 
-*Cities in Evolution* is the one to do first — the valley section,
-conservative surgery and the diagnostic survey are all in it, and that is most
-of what students ask about.
+A work split across several archive.org items lists the rest as
+`download_url_part2`, `_part3` and so on; the parts are fetched in order and
+concatenated. The Indore report uses this.
 
-Until they are in, Geddes answers from what the model already knows rather
-than from retrieved passages, and the Librarian's `CHECK` track can catch a
-wrong date but cannot confirm a quotation. The **retrieval health** panel on
-the dashboard tracks exactly this.
+### Multi-part and local sources
+
+Entries with no fetch field at all are yours to place in `corpus/studio/`.
+Ingest names them and tells you so rather than failing.
 
 ## Dashboard
 

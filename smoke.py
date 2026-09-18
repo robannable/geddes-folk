@@ -70,17 +70,28 @@ fb = ingest.chunk_sections(plain)
 check("fallback yields untitled chunks", [s["section_title"] for s in fb], [None, None])
 
 print("\n== corpus directories ==")
-# corpus/raw/ is gitignored and rebuilt per install; corpus/studio/ ships
-# with the repo for material that has no download_url. A manifest entry
-# resolves against either, studio first.
-check("studio dir is where ingest looks first",
-      ingest.source_path.__doc__ is not None and
-      (Path(__file__).parent / "corpus" / "studio").exists(), True)
-check("studio material resolves",
-      (ingest.source_path("site_analysis_topics.md") or Path("/nope")).parent.name,
-      "studio")
-check("an unfetched source resolves to None",
-      ingest.source_path("definitely_not_here_9f3a.txt"), None)
+# Both corpus/raw/ and corpus/studio/ are gitignored — the corpus is
+# built per install. raw/ is fetched from the manifest; studio/ is where
+# you put your own unfetchable material. A manifest entry resolves
+# against either, studio first so a local file beats a re-download.
+import tempfile as _tf
+_probe = Path(_tf.mkdtemp())
+_saved = (ingest.STUDIO, ingest.RAW)
+try:
+    ingest.STUDIO, ingest.RAW = _probe / "studio", _probe / "raw"
+    ingest.STUDIO.mkdir(); ingest.RAW.mkdir()
+    check("missing source resolves to None",
+          ingest.source_path("nothing_here.txt"), None)
+    (ingest.RAW / "both.txt").write_text("raw copy", encoding="utf-8")
+    check("falls back to raw/",
+          ingest.source_path("both.txt").parent.name, "raw")
+    (ingest.STUDIO / "both.txt").write_text("studio copy", encoding="utf-8")
+    check("studio wins over raw",
+          ingest.source_path("both.txt").parent.name, "studio")
+    check("studio content is what gets read",
+          ingest.read_source(ingest.source_path("both.txt")), "studio copy")
+finally:
+    ingest.STUDIO, ingest.RAW = _saved
 
 print("\n== manifest is internally consistent ==")
 # Not "every source is present" — the primary texts still need their
@@ -91,11 +102,12 @@ print("\n== manifest is internally consistent ==")
 _manifest = json.loads((Path(__file__).parent / "corpus" / "manifest.json").read_text())
 _pending = 0
 for _e in _manifest:
-    _fetchable = "download_url" in _e or "wikipedia_title" in _e
+    _fetchable = ("download_url" in _e or "wikipedia_title" in _e
+                  or any(k.startswith("download_url_part") for k in _e))
     _shipped = ingest.source_path(_e["file"]) is not None
     if not (_fetchable or _shipped):
         _pending += 1
-    check(f"{_e['id']}: fetchable, shipped, or explained",
+    check(f"{_e['id']}: fetchable, present, or explained",
           _fetchable or _shipped or bool(_e.get("note")), True)
     for _key in ("id", "title", "file", "type", "voice"):
         check(f"{_e['id']}: has {_key}", _key in _e, True)
@@ -103,8 +115,22 @@ for _e in _manifest:
           _e["type"] in ("prose", "chaptered"), True)
     check(f"{_e['id']}: voice is known",
           _e["voice"] in ("geddes", "librarian", "both"), True)
-print(f"  NOTE  {_pending} entr{'y' if _pending == 1 else 'ies'} still need a "
-      f"download_url (see README, Adding the primary texts)")
+print(f"  NOTE  {_pending} entr{'y' if _pending == 1 else 'ies'} not fetchable "
+      f"and not present locally (studio material you place by hand)")
+
+print("\n== multi-part sources ==")
+import fetch_corpus
+check("single download_url yields one url",
+      len(fetch_corpus.download_urls({"download_url": "a"})), 1)
+check("partN urls follow, in numeric order",
+      fetch_corpus.download_urls({"download_url": "a", "download_url_part10": "k",
+                                  "download_url_part2": "b"}),
+      ["a", "b", "k"])
+check("an entry with no urls yields none",
+      fetch_corpus.download_urls({"wikipedia_title": "X"}), [])
+for _e in _manifest:
+    _urls = fetch_corpus.download_urls(_e)
+    check(f"{_e['id']}: no duplicate part urls", len(_urls), len(set(_urls)))
 
 print("\n== source reading ==")
 import tempfile

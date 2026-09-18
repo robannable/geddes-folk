@@ -135,10 +135,18 @@ breaks.
 
 ### Corpus is built per install, not shipped
 
-`corpus/raw/` and `corpus/index/` are gitignored. A clone carries the
-manifest and `corpus/studio/`; `fetch_corpus.py` and `ingest.py` build the
-rest. Do not commit fetched texts — they are hundreds of KB of djvu OCR
-each and they are reproducible from the manifest.
+`corpus/raw/`, `corpus/studio/` and `corpus/index/` are **all** gitignored.
+A clone carries the manifest and nothing else. `raw/` is fetched,
+`studio/` is placed by hand, `index/` is built from both. Do not commit
+corpus texts — they are hundreds of KB of djvu OCR each, and the fetchable
+ones are reproducible from the manifest anyway.
+
+An earlier pass kept `studio/` tracked, on the reasoning that unfetchable
+teaching material would otherwise vanish for anyone cloning. Rob then
+ignored it too: the corpus is his, per machine, and the studio documents
+are his own files rather than repo content. Manifest entries for them
+carry a `LOCAL:` note and ingest says "place it in corpus/studio/" rather
+than "run fetch_corpus.py".
 
 `ingest.read_source()` handles `.txt`, `.md` and `.pdf`. PDFs go through
 pypdf, pages joined by a blank line. Before it existed a PDF in the corpus
@@ -163,6 +171,26 @@ skips those rather than reporting them as failures.
 fetchable, shipped, or carries a `note` explaining why not. It does *not*
 assert every source is present — the primary texts still need their
 archive.org identifiers, and that is outstanding work, not a test failure.
+
+### Multi-part sources
+
+`fetch_corpus.download_urls()` collects `download_url` then any
+`download_url_partN`, sorted numerically, and concatenates the fetched
+segments with a blank line between them. The Indore report is two
+archive.org items and uses this.
+
+`smoke.py` asserts no entry lists the same URL twice — the first version
+of the Indore entry had `download_url_part2` pointing back at part 1, so
+it would have downloaded volume one twice and looked like it worked.
+
+### Corpus provenance
+
+Every primary-text entry carries a `note` saying which scan was chosen,
+why, and what the alternatives are. Keep that up. Two live traps recorded
+there: `evolution_of_sex` has a 1901 revised edition on archive.org that
+is a different text and must not be mixed in, and `city_development` is a
+Google scan of a plate-heavy book, so its chapter boundaries want checking
+after the first ingest.
 
 ### Retrieval weighting
 

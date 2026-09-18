@@ -70,10 +70,11 @@ def source_path(filename: str) -> Path | None:
 
     Two directories, because the texts have two provenances:
 
-      corpus/studio/  material that belongs to the repo — teaching notes,
-                      briefs, anything with no download_url. Tracked in git.
-      corpus/raw/     everything fetched from the manifest. Gitignored and
-                      rebuilt per install, so a clone stays small.
+      corpus/studio/  your own material — teaching notes, briefs, PDFs,
+                      anything with no download_url. Placed by hand.
+      corpus/raw/     everything fetched from the manifest.
+
+    Both are gitignored: the corpus is built per install, not shipped.
 
     studio wins on a name clash, since a local edit should beat a
     re-download.
@@ -202,8 +203,12 @@ def build_chunks(manifest: list[dict]) -> list[dict]:
     for src in manifest:
         path = source_path(src["file"])
         if path is None:
-            print(f"  skip {src['id']}: {src['file']} not found "
-                  f"(run fetch_corpus.py)", file=sys.stderr)
+            fetchable = ("download_url" in src or "wikipedia_title" in src
+                         or any(k.startswith("download_url_part") for k in src))
+            how = ("run fetch_corpus.py" if fetchable
+                   else f"place it in corpus/studio/ — it is not fetchable")
+            print(f"  skip {src['id']}: {src['file']} not found ({how})",
+                  file=sys.stderr)
             continue
 
         # One unreadable source should cost its own chunks, not the whole

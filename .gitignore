@@ -20,11 +20,11 @@ venv/
 # Corpus texts and index: both are built per install, not shipped.
 # `python fetch_corpus.py` downloads corpus/raw/ from the manifest and
 # `python ingest.py` builds corpus/index/ from it — so a clone stays
-# small and nobody commits a 500KB djvu dump. Studio material that has
-# no download_url lives in corpus/studio/ and IS tracked.
+# small and nobody commits a 500KB djvu dump. 
 corpus/raw/
 !corpus/raw/.gitkeep
 corpus/index/
+corpus/studio/
 
 # conversation logs
 logs/

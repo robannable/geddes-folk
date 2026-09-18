@@ -30,7 +30,7 @@ for name in ("faiss", "sentence_transformers", "numpy"):
             sys.modules[name] = m
 
 sys.path.insert(0, str(Path(__file__).parent))
-import ingest, retrieval, session_log, transcript, config
+import ingest, retrieval, session_log, transcript, config, modes
 
 ok = fail = 0
 def check(label, got, want):
@@ -125,6 +125,46 @@ check("shows mode and effort", "survey · effort medium" in md, True)
 check("shows chunk score", "score 0.71" in md, True)
 check("labels model, not 'Opus'", "Geddes (Sonnet 5):" in md, True)
 check("no stale Opus label", "Opus" in md, False)
+
+print("\n== cognitive mode detection ==")
+for prompt, want in [
+    ("What is the valley section? Describe it.", "survey"),
+    ("Where did you observe this, and when?", "survey"),
+    ("How do folk, work and place connect across a region?", "synthesis"),
+    ("Why might we propose a different future for this site?", "proposition"),
+    ("Imagine you could design an alternative strategy.", "proposition"),
+    ("Hello.", "survey"),
+    ("", "survey"),
+]:
+    check(repr(prompt[:38]), modes.detect(prompt).name, want)
+
+# Documented collision: "survey" and "plan" are mode keywords and also
+# central Geddes terms, so this ties 2-2 and the tie goes to survey.
+check("Geddes-term collision ties to survey",
+      modes.detect("What is the relationship between the survey and the plan?").name,
+      "survey")
+
+print("\n== effort resolution ==")
+m, e, src = modes.resolve("Describe the site.")
+check("survey -> medium", (m.name, e, src), ("survey", "medium", "auto (survey)"))
+m, e, src = modes.resolve("How do these connect together across domains?")
+check("synthesis -> high", (m.name, e), ("synthesis", "high"))
+m, e, src = modes.resolve("Propose a vision for the future.")
+check("proposition -> xhigh", (m.name, e), ("proposition", "xhigh"))
+
+m, e, src = modes.resolve("Propose a vision for the future.", "low")
+check("override replaces effort", e, "low")
+check("override keeps the mode", m.name, "proposition")
+check("override marked manual", src, "manual")
+
+m, e, src = modes.resolve("Describe the site.", "nonsense")
+check("unknown level falls back", (e, src), ("medium", "auto (survey)"))
+m, e, src = modes.resolve("Describe the site.", modes.AUTO)
+check("AUTO is auto", (e, src), ("medium", "auto (survey)"))
+
+for mo in modes.MODES:
+    check(f"{mo.name}: effort is a real level", mo.effort in modes.EFFORT_LEVELS, True)
+    check(f"{mo.name}: has guidance text", bool(mo.guidance.strip()), True)
 
 print(f"\n{ok} passed, {fail} failed")
 sys.exit(1 if fail else 0)

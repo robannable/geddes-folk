@@ -8,9 +8,9 @@ Forked from the [sharp-folk](https://github.com/robannable/sharp-folk) engine
 and carrying the cognitive-modes, named-user and analytics ideas from the
 Streamlit [Geddes-Ghost](https://github.com/robannable/Geddes-Ghost) it replaces.
 
-> **Status: engine only.** The retrieval, logging and transcript layers are in
-> place and tested. `app.py`, `modes.py`, the prompts and the dashboard are not
-> written yet — see *Where this is up to* below.
+> **Status: app runs; corpus is the gap.** Both voices, the three-way
+> classifier, cognitive modes and logging are wired. The dashboard is not
+> built, and most of the corpus is not fetched — see *Where this is up to*.
 
 ## The two voices
 
@@ -119,23 +119,55 @@ Not a substitute for `python ingest.py` and a real conversation.
 
 ## Where this is up to
 
-Built and tested:
+Built:
 
 ```
+app.py             Chainlit entrypoint — two voices, three-way classifier
+modes.py           cognitive modes → output_config.effort
 config.py          models, labels, cost rates, retrieval weights
 ingest.py          manifest → clean → chunk (prose / chaptered) → embed → FAISS
 retrieval.py       load index, voice + student filtering, weighted re-rank
 session_log.py     per-turn JSONL + cost estimation
 transcript.py      JSONL → Markdown
 fetch_corpus.py    manifest → corpus/raw/
-smoke.py           engine tests
+prompts/           Geddes persona, Librarian voice
+smoke.py           56 assertions, no faiss/torch needed
 ```
 
-Not yet written:
+Not built:
 
-- `app.py` — Chainlit entrypoint, two voices, three-way classifier
-- `modes.py` — cognitive modes (survey / synthesis / proposition) mapped to
-  `output_config.effort`, since `temperature` is rejected by current models
-- `prompts/patrick_geddes_persona.txt`, `prompts/librarian_voice.txt`
-- `dashboard.py` — analytics over `logs/*.jsonl`
-- The corpus itself (see above)
+- **`dashboard.py`** — analytics over `logs/*.jsonl`. Ports from Geddes-Ghost's
+  `admin_dashboard.py`: response metrics, document usage, user analysis, topics
+  map, conversation insights, interventions. New: cost trends, and classifier
+  verdict rates split by track. The temperature tab has no honest equivalent.
+- **The corpus.** Most manifest entries are `UNVERIFIED` with no
+  `download_url`. Until they're fetched, the Librarian's CHECK track has almost
+  nothing to check against and will correctly but uselessly answer "I can't
+  confirm that".
+- **Transcripts as corpus.** Fold yesterday's `logs/<date>.md` back in as a
+  per-user `history` source, so the tool accumulates a memory of a cohort.
+
+## Cognitive modes
+
+Carried over from Geddes-Ghost, with one forced change. It varied `temperature`
+per mode (survey 0.7, synthesis 0.8, proposition 0.9); `temperature`, `top_p`
+and `top_k` are rejected with a 400 on every current model. The nearest
+equivalent is `output_config.effort`, which governs how much the model thinks
+rather than how randomly it samples:
+
+| Mode | Triggered by | Effort |
+|---|---|---|
+| survey | what, describe, observe, where, when | `medium` |
+| synthesis | how, connect, relate, pattern, between | `high` |
+| proposition | why, propose, imagine, design, future | `xhigh` |
+
+The prompt prefixes and guidance paragraphs survive unchanged — they were
+always doing more of the work than the sampler was. Override the effort level
+in the settings panel; the mode still follows from the question, so the prose
+steering stays.
+
+Known collision, left alone: "survey", "plan", "pattern" and "design" are mode
+keywords *and* central Geddes terms, so a question about his diagnostic survey
+scores toward survey mode whatever it asks. The scorer is crude on purpose. If
+the logs show modes consistently misread, prune the keyword lists before adding
+machinery.
